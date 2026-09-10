@@ -1,0 +1,61 @@
+{
+  "name": "dsh-lint-loop",
+  "version": "0.1.0",
+  "description": "Zero-config lint feedback loop for DeepSeek Harness — model-visible lint_diagnostics / lint_workspace_errors / lint_fix tools (eslint / biome / ruff, auto-detected) plus an auto-injected post-edit findings section, closing the edit → lint → fix loop.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepare": "tsup",
+    "prepublishOnly": "tsup"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "lint",
+    "eslint",
+    "biome",
+    "ruff",
+    "diagnostics"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.1 <0.2.0-0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.8",
+    "@types/node": "^26.2.0",
+    "tsup": "^8.5.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lemonxiny55/dsh-lint-loop.git"
+  },
+  "homepage": "https://github.com/lemonxiny55/dsh-lint-loop",
+  "bugs": {
+    "url": "https://github.com/lemonxiny55/dsh-lint-loop/issues"
+  }
+}
