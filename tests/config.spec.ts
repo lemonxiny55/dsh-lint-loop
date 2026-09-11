@@ -12,6 +12,14 @@ describe('applyConfig / getConfig', () => {
     expect(config.linterPath).toEqual({})
     expect(config.sectionTtlMs).toBe(30_000)
     expect(config.timeoutMs).toBe(10_000)
+    expect(config.sectionSeverity).toBe('error')
+    expect(config.settleMs).toBe(600)
+    expect(config.gate).toBe(true)
+    expect(config.gateMaxSteers).toBe(2)
+    expect(config.gateSeverity).toBe('error')
+    expect(config.codeFrames).toBe(true)
+    expect(config.frameLines).toBe(1)
+    expect(config.frameLimit).toBe(5)
   })
 
   it('merges a partial config over the defaults (idempotent)', () => {
@@ -23,13 +31,39 @@ describe('applyConfig / getConfig', () => {
     expect(getConfig().timeoutMs).toBe(10_000)
   })
 
+  it('accepts the P0 loop controls', () => {
+    applyConfig({ gate: false, gateMaxSteers: 4, sectionSeverity: 'warning', codeFrames: false, settleMs: 900 })
+    expect(getConfig().gate).toBe(false)
+    expect(getConfig().gateMaxSteers).toBe(4)
+    expect(getConfig().sectionSeverity).toBe('warning')
+    expect(getConfig().codeFrames).toBe(false)
+    expect(getConfig().settleMs).toBe(900)
+  })
+
   it('coerces obviously wrong numbers back to defaults', () => {
-    applyConfig({ maxFindings: -3, sectionTtlMs: 5, timeoutMs: 0 })
+    applyConfig({
+      maxFindings: -3, sectionTtlMs: 5, timeoutMs: 0,
+      settleMs: 5, gateMaxSteers: -1, frameLines: -1, frameLimit: -1,
+    })
     expect(getConfig().maxFindings).toBe(50)
     expect(getConfig().sectionTtlMs).toBe(30_000)
     expect(getConfig().timeoutMs).toBe(10_000)
+    expect(getConfig().settleMs).toBe(600)
+    expect(getConfig().gateMaxSteers).toBe(2)
+    expect(getConfig().frameLines).toBe(1)
+    expect(getConfig().frameLimit).toBe(5)
     applyConfig({ maxFindings: Number.NaN })
     expect(getConfig().maxFindings).toBe(50)
+  })
+
+  it('rejects unknown severities and keeps a zero cap/limit when asked', () => {
+    applyConfig({ sectionSeverity: 'bogus' as never, gateSeverity: 'warning' })
+    expect(getConfig().sectionSeverity).toBe('error')
+    expect(getConfig().gateSeverity).toBe('warning')
+    applyConfig({ gateMaxSteers: 0, frameLines: 0, frameLimit: 0 })
+    expect(getConfig().gateMaxSteers).toBe(0)
+    expect(getConfig().frameLines).toBe(0)
+    expect(getConfig().frameLimit).toBe(0)
   })
 
   it('filters unknown linter keys out of the forced set', () => {

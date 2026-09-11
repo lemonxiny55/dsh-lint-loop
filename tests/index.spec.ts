@@ -3,32 +3,32 @@ import { apply } from '../src/index.js'
 import { applyConfig } from '../src/config.js'
 import { disposeAllManagers, managerForRoot } from '../src/manager.js'
 import { invalidateProbes, probeLinters } from '../src/detect.js'
+import { clearGateState } from '../src/gate.js'
 import { tools } from '../src/tools.js'
 import { fakeLinterPath, makeFixtureRepo, type FixtureRepo } from './helpers/fixtures.js'
 
 const FAKE = fakeLinterPath()
 const PLUGIN_CONFIG = { linterPath: { eslint: FAKE, biome: FAKE, ruff: FAKE } }
 
+type Listener = (target: unknown, info: unknown, exec: unknown) => void
+
 interface Mounted {
   registered: string[]
-  listeners: Array<
-    (target: { displayPath?: string } | undefined, info: { kind?: string } | undefined, exec: unknown) => void
-  >
+  listenerNames: string[]
+  listenersFor: (name: string) => Listener[]
   sectionText: () => string
   sectionOrder: number
   sectionName: string
   dispose: () => void
-  disposed: () => { tools: number; sections: number; listener: boolean }
+  disposed: () => { tools: number; sections: number; listeners: number }
 }
 
 function mount(pluginConfig?: Record<string, unknown>): Mounted {
   const registered: string[] = []
-  const listeners: Array<
-    (target: { displayPath?: string } | undefined, info: { kind?: string } | undefined, exec: unknown) => void
-  > = []
+  const entries: Array<{ name: string; listener: Listener }> = []
   let disposedTools = 0
   let disposedSections = 0
-  let disposedListener = false
+  let disposedListeners = 0
   let section: { name: string; order: number; text: (context: unknown) => string } | undefined
   let disposeEffect: (() => void) | undefined
 
@@ -45,11 +45,11 @@ function mount(pluginConfig?: Record<string, unknown>): Mounted {
       },
     },
     systemPrompt: {
-      section(registered: { name: string; order: number; text: string | ((context: unknown) => string) }) {
-        const text = registered.text
+      section(registeredSection: { name: string; order: number; text: string | ((context: unknown) => string) }) {
+        const text = registeredSection.text
         section = {
-          name: registered.name,
-          order: registered.order,
+          name: registeredSection.name,
+          order: registeredSection.order,
           text: typeof text === 'function' ? () => text(undefined) : () => text,
         }
         return () => {
@@ -57,17 +57,10 @@ function mount(pluginConfig?: Record<string, unknown>): Mounted {
         }
       },
     },
-    on(
-      _name: string,
-      listener: (
-        target: { displayPath?: string } | undefined,
-        info: { kind?: string } | undefined,
-        exec: unknown,
-      ) => void,
-    ) {
-      listeners.push(listener)
+    on(name: string, listener: Listener) {
+      entries.push({ name, listener })
       return () => {
-        disposedListener = true
+        disposedListeners++
       }
     },
   }
@@ -77,7 +70,8 @@ function mount(pluginConfig?: Record<string, unknown>): Mounted {
   apply(ctx as never, pluginConfig as never)
   return {
     registered,
-    listeners,
+    listenerNames: entries.map((entry) => entry.name),
+    listenersFor: (name) => entries.filter((entry) => entry.name === name).map((entry) => entry.listener),
     sectionText: () => {
       if (!section) throw new Error('section was not registered')
       return section.text(undefined)
@@ -91,7 +85,7 @@ function mount(pluginConfig?: Record<string, unknown>): Mounted {
       return section.name
     },
     dispose: () => disposeEffect?.(),
-    disposed: () => ({ tools: disposedTools, sections: disposedSections, listener: disposedListener }),
+    disposed: () => ({ tools: disposedTools, sections: disposedSections, listeners: disposedListeners }),
   }
 }
 
@@ -106,27 +100,28 @@ async function runDiagnostics(args: Record<string, unknown>, root: string): Prom
 afterEach(async () => {
   await disposeAllManagers()
   invalidateProbes()
+  clearGateState()
   applyConfig()
 })
 
 describe('plugin lifecycle', () => {
-  it('registers tools + section + fs/observed listener, disposes all, and can mount again', () => {
+  it('registers tools + section + fs listener + gate listener, disposes all, and can mount again', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
     const first = mount(PLUGIN_CONFIG)
     expect(first.registered).toEqual(['lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     expect(first.sectionName).toBe('lint:findings')
     expect(first.sectionOrder).toBe(75)
-    // Before any edit the section shows the standing guidance line.
+    expect(first.listenerNames).toEqual(['fs/observed', 'agent/turn-stopping'])
     expect(first.sectionText()).toContain('lint_diagnostics')
 
     first.dispose()
-    expect(first.disposed()).toEqual({ tools: 3, sections: 1, listener: true })
+    expect(first.disposed()).toEqual({ tools: 3, sections: 1, listeners: 2 })
 
     const second = mount(PLUGIN_CONFIG)
     expect(second.registered).toEqual(['lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     second.dispose()
-    expect(second.disposed()).toEqual({ tools: 3, sections: 1, listener: true })
+    expect(second.disposed()).toEqual({ tools: 3, sections: 1, listeners: 2 })
   })
 
   it('injects a findings delta after an fs/observed edit event (the closed loop)', async () => {
@@ -135,7 +130,8 @@ describe('plugin lifecycle', () => {
     await repo.write('eslint.config.mjs', 'export default []\n')
 
     const mounted = mount(PLUGIN_CONFIG)
-    expect(mounted.listeners).toHaveLength(1)
+    const fsListener = mounted.listenersFor('fs/observed')[0]
+    expect(fsListener).toBeDefined()
 
     // Warm the probe/store through the tool path, then "edit" another file.
     await repo.write('src/warm.ts', 'const warm = 1\n')
@@ -145,11 +141,11 @@ describe('plugin lifecycle', () => {
       'const x = 1 // lint: error no-unused-vars x is never used\n',
     )
 
-    mounted.listeners[0]({ displayPath: edited }, { kind: 'present' }, undefined)
+    fsListener({ displayPath: edited }, { kind: 'present' }, undefined)
     await vi.waitFor(
       () => {
         const text = mounted.sectionText()
-        expect(text).toContain('1 error / 0 warnings')
+        expect(text).toContain('1 error introduced by your last edit')
         expect(text).toContain('no-unused-vars')
         expect(text).toContain('src/broken.ts:1')
         expect(text).toContain('lint_fix')
@@ -160,6 +156,36 @@ describe('plugin lifecycle', () => {
     mounted.dispose()
   })
 
+  it('keeps warnings out of the section by default, but includes them when asked', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const repo: FixtureRepo = await makeFixtureRepo()
+    await repo.write('eslint.config.mjs', 'export default []\n')
+    const file = await repo.write('src/warn.ts', 'const w = 1 // lint: warning style-rule just a warning\n')
+
+    const strict = mount(PLUGIN_CONFIG)
+    strict.listenersFor('fs/observed')[0]({ displayPath: file }, { kind: 'present' }, undefined)
+    await vi.waitFor(
+      () => {
+        // A warning-only delta is filtered out → the section falls back to guidance.
+        expect(strict.sectionText()).toContain('lint_diagnostics')
+        expect(strict.sectionText()).not.toContain('style-rule')
+      },
+      { timeout: 10_000, interval: 100 },
+    )
+    strict.dispose()
+
+    const loud = mount({ ...PLUGIN_CONFIG, sectionSeverity: 'warning' })
+    loud.listenersFor('fs/observed')[0]({ displayPath: file }, { kind: 'present' }, undefined)
+    await vi.waitFor(
+      () => {
+        expect(loud.sectionText()).toContain('style-rule')
+        expect(loud.sectionText()).toContain('1 warning introduced by your last edit')
+      },
+      { timeout: 10_000, interval: 100 },
+    )
+    loud.dispose()
+  })
+
   it('collapses to guidance when a re-save introduces nothing new (delta semantics)', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const repo: FixtureRepo = await makeFixtureRepo()
@@ -167,13 +193,14 @@ describe('plugin lifecycle', () => {
     const file = await repo.write('src/delta.ts', 'const d = 1 // lint: error dup-rule same finding\n')
 
     const mounted = mount(PLUGIN_CONFIG)
-    mounted.listeners[0]({ displayPath: file }, { kind: 'present' }, undefined)
+    const fsListener = mounted.listenersFor('fs/observed')[0]
+    fsListener({ displayPath: file }, { kind: 'present' }, undefined)
     await vi.waitFor(() => {
       expect(mounted.sectionText()).toContain('dup-rule')
     }, { timeout: 10_000, interval: 100 })
 
     // Same file observed again (unchanged content) → no NEW findings → guidance only.
-    mounted.listeners[0]({ displayPath: file }, { kind: 'present' }, undefined)
+    fsListener({ displayPath: file }, { kind: 'present' }, undefined)
     await vi.waitFor(() => {
       expect(mounted.sectionText()).not.toContain('dup-rule')
       expect(mounted.sectionText()).toContain('lint_diagnostics')
@@ -190,7 +217,7 @@ describe('plugin lifecycle', () => {
 
     const mounted = mount(PLUGIN_CONFIG)
     const config = await repo.write('biome.json', '{}\n')
-    mounted.listeners[0]({ displayPath: config }, { kind: 'present' }, undefined)
+    mounted.listenersFor('fs/observed')[0]({ displayPath: config }, { kind: 'present' }, undefined)
 
     await vi.waitFor(() => {
       expect(probeLinters(repo.root)).resolves.toMatchObject({ biome: true })
@@ -198,14 +225,48 @@ describe('plugin lifecycle', () => {
     mounted.dispose()
   })
 
-  it('stays quiet (no section, no listener) when autoInject is false', () => {
+  it('stays quiet (no section, no listeners) when autoInject is false and the gate is not requested', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false })
     expect(mounted.registered).toHaveLength(3)
-    expect(mounted.listeners).toHaveLength(0)
+    expect(mounted.listenerNames).toEqual([])
     expect(() => mounted.sectionText()).toThrow('section was not registered')
     mounted.dispose()
-    expect(mounted.disposed()).toEqual({ tools: 3, sections: 0, listener: false })
+    expect(mounted.disposed()).toEqual({ tools: 3, sections: 0, listeners: 0 })
+  })
+})
+
+describe('completion gate wiring', () => {
+  it('arms the gate without a section when autoInject is false but gate is explicit', () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false, gate: true })
+    expect(mounted.listenerNames).toEqual(['fs/observed', 'agent/turn-stopping'])
+    expect(() => mounted.sectionText()).toThrow('section was not registered')
+    mounted.dispose()
+  })
+
+  it('steers the agent when a file edited this turn still has errors', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const repo: FixtureRepo = await makeFixtureRepo()
+    await repo.write('eslint.config.mjs', 'export default []\n')
+    const file = await repo.write('src/gated.ts', 'const g = 1 // lint: error no-unused-vars g is unused\n')
+
+    const mounted = mount({ ...PLUGIN_CONFIG, gateMaxSteers: 1 })
+    const steers: unknown[] = []
+    const agent = { id: 'sess-live', steer: (message: unknown) => steers.push(message) }
+
+    // The edit is observed first, then the turn tries to close.
+    mounted.listenersFor('fs/observed')[0]({ displayPath: file }, { kind: 'present' }, undefined)
+    mounted.listenersFor('agent/turn-stopping')[0]({ agent, turn: 1 }, undefined, undefined)
+
+    await vi.waitFor(() => {
+      expect(steers).toHaveLength(1)
+      const text = (steers[0] as { content: Array<{ text: string }> }).content[0].text
+      expect(text).toContain('cannot finish cleanly')
+      expect(text).toContain('no-unused-vars')
+    }, { timeout: 10_000, interval: 100 })
+
+    mounted.dispose()
   })
 
   it('managerForRoot returns one shared manager per root', async () => {

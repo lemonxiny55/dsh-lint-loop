@@ -4,6 +4,7 @@ import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
 import path from 'node:path'
 import { getConfig } from './config.js'
 import { capFindings, filterFindings, renderFindings, sortFindings, type Finding, type Severity } from './findings.js'
+import { frameFor } from './frames.js'
 import { LintManager, managerForRoot, type FixResult } from './manager.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 
@@ -39,6 +40,18 @@ function isFindingValue(value: JsonValue): boolean {
   )
 }
 
+/** A per-render resolver that frames at most `frameLimit` findings. */
+function frameResolver(): ((finding: Finding) => string | undefined) | undefined {
+  const config = getConfig()
+  if (!config.codeFrames || config.frameLimit <= 0) return undefined
+  let used = 0
+  return (finding) => {
+    if (used >= config.frameLimit) return undefined
+    used++
+    return frameFor(finding.file, finding.line, config.frameLines)
+  }
+}
+
 /** Render canonical output into the compact findings table (one text block). */
 function renderFindingValue(value: JsonValue[]): TextBlock[] {
   const only = value.length === 1 ? value[0] : undefined
@@ -53,7 +66,7 @@ function renderFindingValue(value: JsonValue[]): TextBlock[] {
     const match = /^\+(\d+) more/.exec(note.note)
     return sum + (match ? Number(match[1]) : 0)
   }, 0)
-  return [{ type: 'text', text: renderFindings(findings, dropped) }]
+  return [{ type: 'text', text: renderFindings(findings, dropped, frameResolver()) }]
 }
 
 /** Canonical array + a truncation note when the cap bit. */
@@ -116,7 +129,7 @@ function renderFixResult(value: Record<string, JsonValue>): TextBlock[] {
   } else {
     header.push(`remaining: ${errors} error${errors === 1 ? '' : 's'}, ${warnings} warning${warnings === 1 ? '' : 's'}`)
   }
-  return [{ type: 'text', text: [...header, renderFindings(findings, dropped)].join('\n') }]
+  return [{ type: 'text', text: [...header, renderFindings(findings, dropped, frameResolver())].join('\n') }]
 }
 
 function fixResultToCanonical(result: FixResult): Record<string, JsonValue> {

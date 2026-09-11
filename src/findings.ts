@@ -60,7 +60,11 @@ export function capFindings(findings: readonly Finding[], max: number): { result
  * src/b.ts:12:1    warn   explicit-any    unexpected any
  * ```
  */
-export function renderFindings(findings: readonly Finding[], dropped = 0): string {
+export function renderFindings(
+  findings: readonly Finding[],
+  dropped = 0,
+  frameFor?: (finding: Finding) => string | undefined,
+): string {
   if (findings.length === 0 && dropped === 0) return '# lint findings (none)'
   const errors = findings.filter((f) => f.severity === 'error').length
   const warnings = findings.filter((f) => f.severity === 'warning').length
@@ -85,12 +89,15 @@ export function renderFindings(findings: readonly Finding[], dropped = 0): strin
   const ruleWidth = Math.max(0, ...rows.map((r) => r.rule.length))
 
   const lines = [`# lint findings (${counts})`]
-  for (const row of rows) {
+  findings.forEach((finding, index) => {
+    const row = rows[index]
     const line = [row.loc.padEnd(locWidth), row.sev.padEnd(sevWidth), row.rule.padEnd(ruleWidth), row.message]
       .join('  ')
       .trimEnd()
     lines.push(row.fixable ? `${line}  [fixable]` : line)
-  }
+    const frame = frameFor?.(finding)
+    if (frame) lines.push(frame)
+  })
   if (dropped > 0) {
     lines.push(`(+${dropped} more suppressed — raise the max parameter or maxFindings config)`)
   }

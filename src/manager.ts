@@ -10,6 +10,7 @@ import { getConfig } from './config.js'
 import { chooseLinter, probeLinters } from './detect.js'
 import { LinterTimeoutError, MissingLinterError, NoConfigError, UnsupportedFileError } from './errors.js'
 import type { Finding } from './findings.js'
+import { recordFileLines } from './frames.js'
 import { linterFamilyForExt, extOf, LINTER_KEYS, LINTER_SPECS, resolveCommand, type LinterKey } from './linters.js'
 import { parseFindingsFor } from './parse.js'
 import { isMissingBinary, runProcess, schedule, type RunOutcome } from './runner.js'
@@ -85,7 +86,18 @@ export class LintManager {
       if (oldest !== undefined) this.store.delete(oldest)
     }
     this.store.set(key, findings)
+    await this.recordLines(absPath)
     return findings
+  }
+
+  /** Cache the file's current lines so rendered findings can carry a code frame. */
+  private async recordLines(absPath: string): Promise<void> {
+    try {
+      const text = await readFile(absPath, 'utf8')
+      recordFileLines(toRelative(this.key(absPath), this.key(this.root)), text)
+    } catch {
+      // Unreadable file (deleted mid-run) → no frame; never fails the lint.
+    }
   }
 
   /** Auto-fix one file, then re-lint. Throws the same friendly errors as lintFile. */

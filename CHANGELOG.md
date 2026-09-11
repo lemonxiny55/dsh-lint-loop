@@ -2,6 +2,16 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## 0.2.0 — 2026-09-10
+
+The P0 loop upgrades: a completion gate, source code frames, and a slimmer injected section.
+
+- **feat(gate):** a **completion gate** on the harness `agent/turn-stopping` seam. When files edited during the current turn still carry errors, the plugin steers the agent for another step (via a structurally-built `UserMessage`, so no new runtime dependency) instead of letting the turn close. Self-limiting: each file is evaluated once per stopping, and each turn forces at most `gateMaxSteers` continuations (default 2) — the first-party Claude Code bridge carries an explicit TODO for exactly this loop guard. Gated severity defaults to `error`; `gate: false` disables. Backward compatible: `autoInject: false` alone still means tools-only (the gate must be requested explicitly in that case).
+- **feat(frames):** **source code frames** on rendered findings — each (up to `frameLimit`, default 5) finding is followed by `frameLines` (default 1) lines of context with the offending line marked `█`. The Aider trick: the model fixes from the finding without re-reading the file. Lines are cached during the lint run and looked up synchronously by the render path; an uncached/replayed result simply omits frames. `codeFrames: false` disables.
+- **feat(section):** the injected `lint:findings` delta is now **errors-only by default** (`sectionSeverity`, default `error`) — warnings stay out of the prompt unless asked for. The quiet period before re-linting is configurable (`settleMs`, default 600ms) so language servers / formatters can settle. The delta text now names the count and severity it reports, and keeps the explicit truncation note.
+- **feat(tools):** `lint_diagnostics` / `lint_fix` render the code-frame view; the canonical JSON is unchanged (frames are presentation only).
+- **test:** 91 vitest cases (up from 72) — new `frames.spec` (frame geometry, clamping, cache eviction) and `gate.spec` (steer-on-errors, clean/empty no-op, per-turn cap, per-turn reset, disabled/zero-cap, unconfigured linter, never-throws), plus section severity filtering and code-frame integration in the tool path. Verified against real eslint 10 output: frames mark the offending line and reflect post-fix content on re-lint.
+
 ## 0.1.0 — 2026-09-09
 
 Initial release — the edit → lint → fix loop for dsh agents.

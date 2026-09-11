@@ -1,6 +1,6 @@
 {
   "name": "dsh-lint-loop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Zero-config lint feedback loop for DeepSeek Harness — model-visible lint_diagnostics / lint_workspace_errors / lint_fix tools (eslint / biome / ruff, auto-detected) plus an auto-injected post-edit findings section, closing the edit → lint → fix loop.",
   "type": "module",
   "main": "./dist/index.js",

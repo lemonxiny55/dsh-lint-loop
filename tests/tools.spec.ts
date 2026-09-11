@@ -27,8 +27,11 @@ afterEach(async () => {
 })
 
 /** Point every linter at the fake and create a fresh fixture repo. */
-async function freshRepo(configFile?: { name: string; content: string }): Promise<FixtureRepo> {
-  applyConfig({ linterPath: { eslint: FAKE, biome: FAKE, ruff: FAKE } })
+async function freshRepo(
+  configFile?: { name: string; content: string },
+  extraConfig?: Record<string, unknown>,
+): Promise<FixtureRepo> {
+  applyConfig({ linterPath: { eslint: FAKE, biome: FAKE, ruff: FAKE }, ...(extraConfig ?? {}) })
   const created = await makeFixtureRepo()
   if (configFile) await created.write(configFile.name, configFile.content)
   return created
@@ -214,9 +217,42 @@ describe('extension routing through real tool calls', () => {
   })
 })
 
+describe('code frames', () => {
+  it('renders a source frame with the offending line marked', async () => {
+    repo = await freshRepo(ESLINT_CONFIG)
+    await repo.write('src/frame.ts', 'const ok = 1\nconst bad = 2 // lint: error no-unused-vars bad is unused\n')
+
+    const value = await run(lintDiagnostics, { file: 'src/frame.ts' }, repo.root)
+    const rendered = render(lintDiagnostics, value)
+    expect(rendered).toContain('█')
+    expect(rendered).toContain('| const bad = 2')
+    expect(rendered).toContain('| const ok = 1')
+  })
+
+  it('omits frames when codeFrames is false', async () => {
+    repo = await freshRepo(ESLINT_CONFIG, { codeFrames: false })
+    await repo.write('src/noframe.ts', 'const bad = 2 // lint: error no-unused-vars bad is unused\n')
+
+    const value = await run(lintDiagnostics, { file: 'src/noframe.ts' }, repo.root)
+    expect(render(lintDiagnostics, value)).not.toContain('█')
+  })
+
+  it('caps how many findings get a frame (frameLimit)', async () => {
+    repo = await freshRepo(ESLINT_CONFIG, { frameLimit: 1 })
+    await repo.write(
+      'src/many.ts',
+      ['const a = 1 // lint: error r1 a is unused', 'const b = 2 // lint: error r2 b is unused', 'const c = 3 // lint: error r3 c is unused'].join('\n') + '\n',
+    )
+
+    const value = await run(lintDiagnostics, { file: 'src/many.ts' }, repo.root)
+    const rendered = render(lintDiagnostics, value)
+    expect((rendered.match(/█/g) ?? [])).toHaveLength(1)
+  })
+})
+
 describe('lint_workspace_errors', () => {
   it('aggregates errors across every seen file and renders them', async () => {
-    repo = await freshRepo(ESLINT_CONFIG)
+    repo = await freshRepo(ESLINT_CONFIG, { codeFrames: false })
     await repo.write('src/a.ts', 'const a = 1 // lint: error rule-a err-a\n// lint: warning rule-w warn-w\n')
     await repo.write('src/b.ts', 'const b = 2 // lint: error rule-b err-b\n')
     await run(lintDiagnostics, { file: 'src/a.ts' }, repo.root)

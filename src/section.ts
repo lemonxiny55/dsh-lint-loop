@@ -16,7 +16,6 @@ import { linterFamilyForExt, extOf } from './linters.js'
 import { managerForRoot } from './manager.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 
-const DEBOUNCE_MS = 400
 const TOP_N = 5
 
 const GUIDANCE =
@@ -44,7 +43,7 @@ export function createLintSection(): LintSection {
     timer = setTimeout(() => {
       timer = null
       void refresh()
-    }, DEBOUNCE_MS)
+    }, getConfig().settleMs)
     timer.unref?.()
   }
 
@@ -67,6 +66,7 @@ export function createLintSection(): LintSection {
         const previous = new Set(manager.findingsFor(abs).map(findingKey))
         const findings = await manager.lintFile(abs)
         for (const finding of findings) {
+          if (finding.severity !== getConfig().sectionSeverity) continue
           if (!previous.has(findingKey(finding))) fresh.push(finding)
         }
       }
@@ -84,18 +84,18 @@ export function createLintSection(): LintSection {
 
   function renderDelta(fresh: Finding[]): string {
     if (fresh.length === 0) return ''
+    const severity = getConfig().sectionSeverity
     const sorted = sortFindings(fresh)
     const capped = capFindings(sorted, TOP_N)
-    const errors = sorted.filter((f) => f.severity === 'error').length
-    const warnings = sorted.filter((f) => f.severity === 'warning').length
     const body = capped.result
       .map((f) => `${f.file}:${f.line} ${f.severity} ${f.rule} ${f.message}${f.fixable ? ' [fixable]' : ''}`)
       .join('\n')
     const overflow = capped.dropped > 0 ? ` (top ${TOP_N} of ${sorted.length})` : ''
     return (
-      `lint: ${errors} error${errors === 1 ? '' : 's'} / ${warnings} warning${warnings === 1 ? '' : 's'} `
-        + `introduced by your last edit${overflow}:\n${body}\n`
-        + `(full list: lint_diagnostics { file } — auto-repair what you can: lint_fix { file })`
+      `lint: ${sorted.length} ${severity}${sorted.length === 1 ? '' : 's'} introduced by your last edit${overflow}:\n`
+        + `${body}\n`
+        + `(full list: lint_diagnostics { file } — auto-repair what you can: lint_fix { file }; `
+        + `other severities stay out of the prompt via sectionSeverity)`
     )
   }
 

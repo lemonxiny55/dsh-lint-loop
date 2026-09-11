@@ -15,7 +15,28 @@
 | `lint_workspace_errors` | 本会话已 lint 文件的全部 error——"现在什么坏了"总览。 |
 | `lint_fix` | **杀手锏** —— 对单文件跑仓库自己的自动修复(`eslint --fix` / `biome check --write` / `ruff check --fix`),然后复检,返回变更行数摘要(+增/-删)、剩余发现、所用 linter。只在工作区根内操作。 |
 
-外加一个可选的**自动注入 system prompt section**(`lint:findings`,order 75——紧跟 `lsp:diagnostics` 之后):模型通过 harness 写/改文件后,插件订阅 `fs/observed` 事件,用自己的串行池 lint 该文件,只注入这次编辑**新增/变化**的发现——最多 top 5 行加计数,绝不灌全仓库。过期增量自动失效(`sectionTtlMs`,默认 30s)。设 `autoInject: false` 可关闭,只留工具。
+外加一个可选的**自动注入 system prompt section**(`lint:findings`,order 75——紧跟 `lsp:diagnostics` 之后):模型通过 harness 写/改文件后,插件订阅 `fs/observed` 事件,用自己的串行池 lint 该文件,只注入这次编辑**新增/变化**的发现——**默认只注入 error**(`sectionSeverity` 可调),最多 top 5 行,绝不灌全仓库。过期增量自动失效(`sectionTtlMs`,默认 30s)。渲染的发现带**源码代码帧**(问题行用 `█` 标出,附一行上下文),模型无需回读文件即可修改。而**完成门禁**(见下)会阻止"文件里还有错误却收工"。
+
+## 完成门禁(0.2)
+
+"编辑 → lint → 修复"只有真正改完才算闭环。在 harness 的 `agent/turn-stopping` 接缝——回合关闭**之前**的串行检查点——插件检查本轮编辑过的文件;若仍有 error,就**steer 模型再走一步**(附上精确发现),而不是让它收工:
+
+```
+lint: this turn cannot finish cleanly — 2 errors remain in file you edited.
+# lint findings (2 errors)
+src/a.ts:3:10  error  no-unused-vars  'x' is defined but never used
+src/a.ts:7:5   error  eqeqeq          Expected '===' and instead saw '=='.
+(fix them (lint_fix repairs what it can), then finish — this nudge is capped per turn)
+```
+
+它刻意是**自我限流**的——官方 Claude Code 桥对此留了明确的 TODO,而本门禁内建了保护:
+
+- 每个文件每次收尾只评估**一次**(重新编辑会重新触发,但不会卡在同一批旧发现上死循环);
+- 每轮最多强制 **`gateMaxSteers` 次续跑**(默认 `2`),之后放行;
+- 只考虑**本轮模型自己碰过的文件**——未触及文件里的历史错误不会阻塞;
+- `gate: false` 彻底关闭;`autoInject: false` 时除非显式 `gate: true` 否则也关闭。
+
+门禁不是硬否决,只是有界的一脚——因此永远不会卡死会话。
 
 ## 闭环
 
@@ -25,11 +46,14 @@
                     ▼ fs/observed 事件
         插件用仓库自己的 linter lint 该文件
                     │
-                    ▼ 只推新增/变化的发现
+                    ▼ 只推新增/变化的发现(默认 error)
         delta 注入 prompt(或按需调 lint_diagnostics)
                     │
                     ▼
         模型读到 "src/a.ts:12 no-unused-vars …"  ──►  lint_fix ──►  清零
+                    │
+                    ▼ 回合即将关闭
+        门禁:编辑过的文件还有 error? ── steer 再走一步(有上限)
 ```
 
 ## 零配置
@@ -53,10 +77,13 @@
 lint_diagnostics { file: "src/extract.ts" }
 # lint findings (1 error, 1 warning)
 src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
+  11 | export function extract(input: string) {
+  12 |   const foo = parse(input)  █
+  13 |   return input
 src/store.ts:8:5      warn   semi            missing semicolon  [fixable]
 ```
 
-`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter);上面这张紧凑表格是渲染视图。修复:
+`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter);上面这张紧凑表格 + 代码帧是渲染视图。修复:
 
 ```
 lint_fix { file: "src/store.ts" }
@@ -114,7 +141,15 @@ linter 缺失?工具会给出确切安装命令:`linter "eslint" is not installe
 | `linters` | `[]`(自动) | 强制可用的 linter 集合(`eslint` / `biome` / `ruff`);未知键告警 |
 | `linterPath` | `{}` | 按 linter 的二进制覆盖(`{eslint: …, biome: …, ruff: …}`);`.js/.mjs/.cjs` 结尾的路径用当前 Node 直跑 |
 | `sectionTtlMs` | `30000` | 注入 delta 的保鲜时长(最小 1000) |
+| `sectionSeverity` | `error` | 注入 section 报告的严重级别(`error`/`warning`/`info`)——默认把 warning 挡在 prompt 外 |
+| `settleMs` | `600` | 最后一次编辑后重新 lint 的静默期(最小 100) |
 | `timeoutMs` | `10000` | 单次 linter 进程超时(最小 1000);超时进程被杀掉并明确上报 |
+| `gate` | `true` | 完成门禁:编辑过的文件仍有 error 时阻止回合收尾 |
+| `gateMaxSteers` | `2` | 每轮最多强制续跑次数,超过则放行(最小 0) |
+| `gateSeverity` | `error` | 完成门禁执行的严重级别 |
+| `codeFrames` | `true` | 为渲染的发现附源码代码帧 |
+| `frameLines` | `1` | 代码帧上下各带几行上下文 |
+| `frameLimit` | `5` | 最多为几条发现附代码帧(token 护栏) |
 
 ## 支持的 linter
 
@@ -129,7 +164,9 @@ Rust(`clippy`)、Go(`golangci-lint`)等刻意延后——`linters.ts` + `parse.t
 - **探测**(`src/detect.ts`):按 repo root 探测配置文件,带缓存;观察事件携带 linter 配置文件名(`biome.json`、`pyproject.toml`、…)时失效重探。`pyproject.toml` 只有真的含 `[tool.ruff]` 才算 ruff。
 - **Runner 池**(`src/runner.ts`):每 (root, linter) 一条串行车道——保存风暴只会排队,不会并发开 N 个 linter;每次运行一次性 spawn,stdout/stderr 封顶,`timeoutMs` 到点杀掉(SIGTERM → SIGKILL 宽限)。
 - **发现存储**(`src/manager.ts`):每 root 一个 manager,保存每文件最近一次 lint 结果(512 文件软上限);`lint_fix` 修复前后各读一次文件,汇总行级 diff,再复检拿到权威的剩余集合。
-- **编辑检测**(`src/section.ts`):`fs/observed` 监听只入队文件(同步、绝不抛异常);防抖刷新后 lint 并与该文件的先前状态做差——只有新增/变化的发现进入 prompt,最多 top 5。
+- **编辑检测**(`src/section.ts`):`fs/observed` 监听只入队文件(同步、绝不抛异常);`settleMs` 防抖刷新后 lint 并与该文件的先前状态做差——只有配置级别的新增/变化发现进入 prompt,最多 top 5。
+- **代码帧**(`src/frames.ts`):lint 运行时缓存源码行,为前 `frameLimit` 条渲染的发现附上问题行标记 `█` 的上下文;渲染路径保持同步,缓存冷时(回放)优雅降级为不带帧。
+- **完成门禁**(`src/gate.ts`):本轮观察到的文件在 `agent/turn-stopping` 时重新 lint;残留 error 触发有界的 `agent.steer`(每轮 ≤ `gateMaxSteers`),随附发现。
 - **工作区解析**:会话 cwd → 向上找最近 `.git`(有界),与 dsh-code-index 一致;仓库外的文件一律拒绝。
 - **Token 成本意识**:每个面——工具输出与注入 section——都受 `maxFindings` 约束(section 为 top 5);注入的是单次编辑的 delta,不是全仓库。
 
@@ -144,6 +181,7 @@ Rust(`clippy`)、Go(`golangci-lint`)等刻意延后——`linters.ts` + `parse.t
 - Ruff 没有严重级别——所有 ruff 发现都以 `error` 呈现。
 - 自动注入由 harness 文件事件触发;用户在带外直接改文件(不经 harness)不会被观察到,直到下次调用工具。
 - linter 需已安装(先解析仓库本地 `node_modules/.bin`,再 `PATH`,再 `linterPath`);刻意不捆绑。
+- 完成门禁是有界 nudge 而非硬阻断:每轮最多强制 `gateMaxSteers` 次续跑后放行,不会卡死会话。
 - 开发者预览版 harness:上游 API 随时可能破坏性变更。
 
 ## 开发

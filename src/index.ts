@@ -2,9 +2,10 @@
  * dsh-lint-loop — DeepSeek Harness bundle entry.
  *
  * Registers model-visible lint tools (lint_diagnostics / lint_workspace_errors
- * / lint_fix) backed by auto-detected linters (eslint / biome / ruff), and —
- * when autoInject is on — subscribes to the harness `fs/observed` event to
- * inject a compact "what your last edit broke" delta into the system prompt.
+ * / lint_fix) backed by auto-detected linters (eslint / biome / ruff), injects
+ * a compact "what your last edit broke" delta into the system prompt, and —
+ * when the completion gate is on — steers the agent for another step while
+ * files it just edited still carry lint errors.
  */
 
 type Disposer = void | (() => void)
@@ -22,14 +23,7 @@ interface MinimalContext {
     }): () => void
   }
   /** Cordis core event service — present on every live harness context. */
-  on?(
-    name: string,
-    listener: (
-      target: { displayPath?: string } | undefined,
-      info: { kind?: string } | undefined,
-      exec: unknown,
-    ) => void,
-  ): unknown
+  on?(name: string, listener: (...args: unknown[]) => unknown): unknown
 }
 
 export const name = 'dsh-lint-loop'
@@ -63,12 +57,16 @@ export {
   type Severity,
 } from './findings.js'
 export { parseEslintJson, parseBiomeJson, parseRuffJson } from './parse.js'
+export { clearFrameCache, frameFor, recordFileLines } from './frames.js'
+export { handleTurnStopping, markDirty, steeringCountFor, clearGateState, type TurnStoppingPayload } from './gate.js'
 export { applyConfig, getConfig, type PluginConfig } from './config.js'
 export { findRepoRoot } from './workspace.js'
 export { createLintSection } from './section.js'
 
 import { applyConfig, getConfig, type PluginConfig } from './config.js'
 import { invalidateProbes, isLinterConfigBasename } from './detect.js'
+import { clearFrameCache } from './frames.js'
+import { clearGateState, handleTurnStopping, markDirty, type TurnStoppingPayload } from './gate.js'
 import { disposeAllManagers } from './manager.js'
 import { createLintSection } from './section.js'
 import { tools } from './tools.js'
@@ -78,6 +76,11 @@ export const inject = ['tools', 'systemPrompt'] as const
 export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
   applyConfig(pluginConfig)
   ctx.effect(() => {
+    const config = getConfig()
+    // The gate needs the fs/observed listener, which autoInject:false turns
+    // off. Keep the 0.1 behavior (autoInject:false = tools only) unless the
+    // user asks for the gate explicitly.
+    const gateEnabled = config.gate && (config.autoInject || pluginConfig?.gate === true)
     const disposers: Array<() => void> = []
     console.log('[dsh-lint-loop] plugin loaded')
     for (const tool of tools) {
@@ -85,8 +88,8 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
       console.log(`[dsh-lint-loop] registered tool: ${tool.name}`)
     }
 
-    if (getConfig().autoInject) {
-      const section = createLintSection()
+    const section = config.autoInject ? createLintSection() : null
+    if (section) {
       disposers.push(section.dispose)
       disposers.push(
         ctx.systemPrompt.section({
@@ -95,24 +98,43 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
           text: () => section.text(),
         }),
       )
-      if (typeof ctx.on === 'function') {
-        // fs/observed fires after read/read_image/write/edit commit — reads
-        // of unchanged files produce an empty delta, so subscribing to all
-        // of them is harmless and keeps the section's semantics simple.
-        const off = ctx.on('fs/observed', (target, info) => {
-          if (info?.kind !== 'present') return
-          const displayPath = target?.displayPath
-          // A linter config file just changed → the probe cache is stale.
-          // Sync + infallible, same contract as the section listener.
-          if (displayPath && isLinterConfigBasename(basenameOf(displayPath))) invalidateProbes()
-          section.handleObserved(displayPath)
+    }
+
+    const listenerNeeded = section !== null || gateEnabled
+    if (listenerNeeded && typeof ctx.on === 'function') {
+      // fs/observed fires after read/read_image/write/edit commit — reads of
+      // unchanged files produce an empty delta, so subscribing to all of them
+      // is harmless and keeps the section's semantics simple.
+      const off = ctx.on('fs/observed', (...args: unknown[]) => {
+        const target = args[0] as { displayPath?: string } | undefined
+        const info = args[1] as { kind?: string } | undefined
+        if (info?.kind !== 'present') return
+        const displayPath = target?.displayPath
+        // A linter config file just changed → the probe cache is stale.
+        if (displayPath && isLinterConfigBasename(basenameOf(displayPath))) invalidateProbes()
+        section?.handleObserved(displayPath)
+        markDirty(displayPath)
+      }) as (() => void) | undefined
+      if (off) disposers.push(off)
+
+      if (gateEnabled) {
+        const offTurn = ctx.on('agent/turn-stopping', (...args: unknown[]) => {
+          const payload = args[0] as TurnStoppingPayload | undefined
+          if (payload?.agent) void handleTurnStopping(payload)
         }) as (() => void) | undefined
-        if (off) disposers.push(off)
-      } else {
-        console.log(
-          '[dsh-lint-loop] ctx.on unavailable — edit-triggered injection disabled (tools still work)',
-        )
+        if (offTurn) {
+          disposers.push(offTurn)
+          console.log('[dsh-lint-loop] completion gate armed (agent/turn-stopping)')
+        } else {
+          console.log(
+            '[dsh-lint-loop] agent/turn-stopping unavailable — completion gate disabled (tools and section still work)',
+          )
+        }
       }
+    } else if (gateEnabled) {
+      console.log(
+        '[dsh-lint-loop] ctx.on unavailable — completion gate and edit-triggered injection disabled (tools still work)',
+      )
     }
 
     return () => {
@@ -124,6 +146,11 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
           errors.push(error)
         }
       }
+      clearGateState()
+      clearFrameCache()
+      void disposeAllManagers().catch((error) => {
+        console.log(`[dsh-lint-loop] store cleanup error: ${(error as Error).message}`)
+      })
       console.log('[dsh-lint-loop] plugin unloaded')
       if (errors.length > 0) throw new AggregateError(errors, 'failed to unload dsh-lint-loop')
     }
