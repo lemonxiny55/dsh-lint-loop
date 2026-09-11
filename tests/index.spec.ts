@@ -237,6 +237,17 @@ describe('plugin lifecycle', () => {
 })
 
 describe('completion gate wiring', () => {
+  it('the turn-stopping listener returns an awaitable promise (checkpoint contract)', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const mounted = mount({ ...PLUGIN_CONFIG })
+    const listener = mounted.listenersFor('agent/turn-stopping')[0]
+    const result = listener({ agent: { id: 's', steer: () => {} }, turn: 1 }, undefined, undefined)
+    // Fire-and-forget here races the turn close and drops the steer.
+    expect(result).toBeInstanceOf(Promise)
+    await result
+    mounted.dispose()
+  })
+
   it('arms the gate without a section when autoInject is false but gate is explicit', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false, gate: true })

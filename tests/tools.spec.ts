@@ -112,6 +112,24 @@ describe('lint_diagnostics', () => {
     expect(files).toEqual(['src/a.ts', 'src/b.ts'])
   })
 
+  it('accepts the harness-consistent file_path argument (native fs tool convention)', async () => {
+    repo = await freshRepo(ESLINT_CONFIG)
+    await repo.write('src/hp.ts', 'const hp = 1 // lint: error rule-hp hp is unused\n')
+
+    const value = await run(lintDiagnostics, { file_path: 'src/hp.ts' }, repo.root) as Array<Record<string, unknown>>
+    expect(value[0]).toMatchObject({ rule: 'rule-hp', file: 'src/hp.ts' })
+
+    const fixed = await run(lintFix, { file_path: 'src/hp.ts' }, repo.root) as Record<string, unknown>
+    expect(fixed.linter).toBe('eslint')
+    expect(fixed.file).toBe('src/hp.ts')
+  })
+
+  it('returns a friendly error when neither file_path nor file is given to lint_fix', async () => {
+    repo = await freshRepo(ESLINT_CONFIG)
+    const value = await run(lintFix, {}, repo.root) as Record<string, unknown>
+    expect(String(value.error)).toContain('file_path is required')
+  })
+
   it('returns a friendly error for files outside the workspace', async () => {
     repo = await freshRepo(ESLINT_CONFIG)
     const value = await run(lintDiagnostics, { file: '/etc/hostname' }, repo.root) as Array<Record<string, unknown>>

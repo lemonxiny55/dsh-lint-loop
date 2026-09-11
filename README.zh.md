@@ -11,9 +11,9 @@
 
 | 工具 | 用途 |
 |---|---|
-| `lint_diagnostics` | 单文件(或所有已见文件)的 lint 发现:规则、`file:line:col`、消息、`fixable` 布尔;支持 severity 过滤与 `max` 截断。**编辑完文件立刻调用。** |
+| `lint_diagnostics` | 单文件(或所有已见文件)的 lint 发现:规则、`file:line:col`、消息、`fixable` 布尔;支持 severity 过滤与 `max` 截断。参数 `file_path`(别名 `file`)。**编辑完文件立刻调用。** |
 | `lint_workspace_errors` | 本会话已 lint 文件的全部 error——"现在什么坏了"总览。 |
-| `lint_fix` | **杀手锏** —— 对单文件跑仓库自己的自动修复(`eslint --fix` / `biome check --write` / `ruff check --fix`),然后复检,返回变更行数摘要(+增/-删)、剩余发现、所用 linter。只在工作区根内操作。 |
+| `lint_fix` | **杀手锏** —— 对单文件跑仓库自己的自动修复(`eslint --fix` / `biome check --write` / `ruff check --fix`),然后复检,返回变更行数摘要(+增/-删)、剩余发现、所用 linter。参数 `file_path`(别名 `file`)。只在工作区根内操作。 |
 
 外加一个可选的**自动注入 system prompt section**(`lint:findings`,order 75——紧跟 `lsp:diagnostics` 之后):模型通过 harness 写/改文件后,插件订阅 `fs/observed` 事件,用自己的串行池 lint 该文件,只注入这次编辑**新增/变化**的发现——**默认只注入 error**(`sectionSeverity` 可调),最多 top 5 行,绝不灌全仓库。过期增量自动失效(`sectionTtlMs`,默认 30s)。渲染的发现带**源码代码帧**(问题行用 `█` 标出,附一行上下文),模型无需回读文件即可修改。而**完成门禁**(见下)会阻止"文件里还有错误却收工"。
 
@@ -74,7 +74,7 @@ src/a.ts:7:5   error  eqeqeq          Expected '===' and instead saw '=='.
 示例(输入 → 输出):
 
 ```
-lint_diagnostics { file: "src/extract.ts" }
+lint_diagnostics { file_path: "src/extract.ts" }
 # lint findings (1 error, 1 warning)
 src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
   11 | export function extract(input: string) {
@@ -83,10 +83,10 @@ src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
 src/store.ts:8:5      warn   semi            missing semicolon  [fixable]
 ```
 
-`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter);上面这张紧凑表格 + 代码帧是渲染视图。修复:
+`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter);上面这张紧凑表格 + 代码帧是渲染视图。`file_path` 与 harness 原生 fs 工具一致,`file` 别名同样可用。修复:
 
 ```
-lint_fix { file: "src/store.ts" }
+lint_fix { file_path: "src/store.ts" }
 # lint_fix (eslint) — src/store.ts
 fixed: yes (+0/-1 lines)
 remaining: none — file is clean

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { getConfig } from './config.js'
 import { capFindings, filterFindings, renderFindings, sortFindings, type Finding, type Severity } from './findings.js'
 import { frameFor } from './frames.js'
+import { markDirty } from './gate.js'
 import { LintManager, managerForRoot, type FixResult } from './manager.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 
@@ -153,10 +154,14 @@ export const tools = [
       'Lint findings (rule, file:line:col, message, fixable) for one file — or every file the linters have seen. '
       + 'Uses the repo\'s own eslint / biome / ruff config, zero setup. Call right after editing a file.',
     parameters: {
-      file: {
+      file_path: {
         type: 'string',
         description:
           'File to lint (absolute or workspace-relative). Omit to list findings for all files seen this session.',
+      },
+      file: {
+        type: 'string',
+        description: 'Alias of file_path.',
       },
       severity: {
         type: 'string',
@@ -177,16 +182,17 @@ export const tools = [
       render: (_args, value: JsonValue[]): TextBlock[] => renderFindingValue(value),
     },
     async execute(
-      args: { file?: string; severity?: Severity; max?: number; repoRoot?: string },
+      args: { file_path?: string; file?: string; severity?: Severity; max?: number; repoRoot?: string },
       exec: ToolRunExec,
     ): Promise<JsonValue[]> {
       try {
+        const target = args.file_path ?? args.file
         const root = await resolveRoot(args.repoRoot, exec)
         const manager = managerForRoot(root)
         const max = resolveMax(args.max)
         let findings: Finding[]
-        if (args.file) {
-          const abs = await resolveFile(root, args.file)
+        if (target) {
+          const abs = await resolveFile(root, target)
           findings = sortFindings(filterFindings(await manager.lintFile(abs), args.severity))
         } else {
           findings = sortFindings(filterFindings(manager.allFindings(), args.severity))
@@ -238,10 +244,13 @@ export const tools = [
       'Auto-fix lint problems in ONE file with the repo\'s own linter (eslint --fix / biome check --write / ruff check --fix). '
       + 'Returns what changed, remaining findings, and a line-change summary. Only works inside the workspace root.',
     parameters: {
+      file_path: {
+        type: 'string',
+        description: 'File to fix (absolute or workspace-relative).',
+      },
       file: {
         type: 'string',
-        required: true,
-        description: 'File to fix (absolute or workspace-relative).',
+        description: 'Alias of file_path.',
       },
       max: {
         type: 'number',
@@ -262,14 +271,20 @@ export const tools = [
       },
     },
     async execute(
-      args: { file: string; max?: number; repoRoot?: string },
+      args: { file_path?: string; file?: string; max?: number; repoRoot?: string },
       exec: ToolRunExec,
     ): Promise<Record<string, JsonValue>> {
       try {
+        const target = args.file_path ?? args.file
+        if (!target) return { error: 'file_path is required (its alias `file` is also accepted)' }
         const root = await resolveRoot(args.repoRoot, exec)
-        const abs = await resolveFile(root, args.file)
+        const abs = await resolveFile(root, target)
         const manager: LintManager = managerForRoot(root)
         const result = await manager.fixFile(abs)
+        // lint_fix rewrites via the linter process, which bypasses the fs tool
+        // and its fs/observed event — re-arm the gate so the post-fix state is
+        // re-checked at the turn boundary.
+        markDirty(abs)
         const capped = capFindings(result.remaining, resolveMax(args.max))
         return fixResultToCanonical({ ...result, remaining: capped.result, dropped: capped.dropped })
       } catch (error) {

@@ -11,9 +11,9 @@ Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deeps
 
 | Tool | Purpose |
 |---|---|
-| `lint_diagnostics` | Lint findings for one file (or all files the linters have seen), with rule, `file:line:col`, message, and a `fixable` flag; severity filter and `max` cap. **Call right after editing a file.** |
+| `lint_diagnostics` | Lint findings for one file (or all files the linters have seen), with rule, `file:line:col`, message, and a `fixable` flag; severity filter and `max` cap. Takes `file_path` (alias `file`). **Call right after editing a file.** |
 | `lint_workspace_errors` | All errors across files linted this session — the "what is broken right now" view. |
-| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, and the linter used. Workspace-root files only. |
+| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, and the linter used. Takes `file_path` (alias `file`). Workspace-root files only. |
 
 Plus an optional **auto-injected system prompt section** (`lint:findings`, order 75 — right after `lsp:diagnostics`): after the model writes/edits a file through the harness, the plugin subscribes to the `fs/observed` event, lints the file through its serial pool, and injects only the **new/changed findings introduced by that edit** — **errors only by default** (set `sectionSeverity` for more), top 5 lines, never the whole workspace. Stale deltas expire (`sectionTtlMs`, default 30s). Rendered findings carry a **source code frame** (the offending line marked `█`, plus a line of context) so the model fixes without re-reading the file. And the **completion gate** (below) stops the turn from closing while edited files still have errors.
 
@@ -74,7 +74,7 @@ The plugin probes the repo root for what is already there and routes by extensio
 Example (input → output):
 
 ```
-lint_diagnostics { file: "src/extract.ts" }
+lint_diagnostics { file_path: "src/extract.ts" }
 # lint findings (1 error, 1 warning)
 src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
   11 | export function extract(input: string) {
@@ -83,10 +83,10 @@ src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
 src/store.ts:8:5      warn   semi            missing semicolon  [fixable]
 ```
 
-The canonical JSON (rule, file, line, col, severity, message, fixable, linter) is what `execute` returns; the compact table + code frame above is the rendered view. And the fix:
+The canonical JSON (rule, file, line, col, severity, message, fixable, linter) is what `execute` returns; the compact table + code frame above is the rendered view. `file_path` matches the harness's native fs tools; the `file` alias works too. And the fix:
 
 ```
-lint_fix { file: "src/store.ts" }
+lint_fix { file_path: "src/store.ts" }
 # lint_fix (eslint) — src/store.ts
 fixed: yes (+0/-1 lines)
 remaining: none — file is clean

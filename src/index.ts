@@ -110,6 +110,7 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
         const info = args[1] as { kind?: string } | undefined
         if (info?.kind !== 'present') return
         const displayPath = target?.displayPath
+        if (process.env.DSH_LINT_DEBUG === '1') console.log('[dsh-lint-loop][debug] fs/observed', info?.kind, displayPath)
         // A linter config file just changed → the probe cache is stale.
         if (displayPath && isLinterConfigBasename(basenameOf(displayPath))) invalidateProbes()
         section?.handleObserved(displayPath)
@@ -120,7 +121,10 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
       if (gateEnabled) {
         const offTurn = ctx.on('agent/turn-stopping', (...args: unknown[]) => {
           const payload = args[0] as TurnStoppingPayload | undefined
-          if (payload?.agent) void handleTurnStopping(payload)
+          // The seam is an awaited serial checkpoint: return the promise so the
+          // harness waits for the lint + steer before it commits the boundary.
+          // A fire-and-forget call races the turn close and the steer is lost.
+          if (payload?.agent) return handleTurnStopping(payload).then(() => undefined)
         }) as (() => void) | undefined
         if (offTurn) {
           disposers.push(offTurn)

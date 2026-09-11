@@ -33,10 +33,17 @@ const dirty = new Set<string>()
 /** Forced continuations per `${sessionId}::${turn}`. */
 const steers = new Map<string, number>()
 
+function debug(...args: unknown[]): void {
+  if (process.env.DSH_LINT_DEBUG === '1') console.log('[dsh-lint-loop][debug]', ...args)
+}
+
 /** Queue a file from an fs/observed event. Synchronous, never throws. */
 export function markDirty(displayPath: string | undefined): void {
   try {
-    if (displayPath) dirty.add(displayPath)
+    if (displayPath) {
+      debug('markDirty', displayPath)
+      dirty.add(displayPath)
+    }
   } catch {
     // fs/observed listeners must be infallible.
   }
@@ -92,12 +99,14 @@ function createSteerMessage(text: string): unknown {
 export async function handleTurnStopping(payload: TurnStoppingPayload): Promise<string | undefined> {
   try {
     const config = getConfig()
-    if (!config.gate || config.gateMaxSteers <= 0) return undefined
     const files = [...dirty]
     dirty.clear()
+    debug('turn-stopping', 'gate=', config.gate, 'maxSteers=', config.gateMaxSteers, 'dirtyFiles=', files.length)
+    if (!config.gate || config.gateMaxSteers <= 0) return undefined
     if (files.length === 0) return undefined
 
     const errors = await collectErrors(files)
+    debug('turn-stopping errors=', errors.length)
     if (errors.length === 0) return undefined
 
     const key = `${payload.agent.id ?? 'session'}::${payload.turn}`
