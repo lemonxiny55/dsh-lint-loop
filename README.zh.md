@@ -2,8 +2,11 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-lint-loop)](https://www.npmjs.com/package/dsh-lint-loop)
 [![CI](https://github.com/lemonxiny55/dsh-lint-loop/actions/workflows/ci.yml/badge.svg)](https://github.com/lemonxiny55/dsh-lint-loop/actions/workflows/ci.yml)
+[![Discussions](https://img.shields.io/github/discussions/lemonxiny55/dsh-lint-loop)](https://github.com/lemonxiny55/dsh-lint-loop/discussions)
 
 [English](README.md) | 中文
+
+**在用?** 告诉我们哪里顺手、哪里出问题——[点个 Star](https://github.com/lemonxiny55/dsh-lint-loop)、[提问](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a)、[求支持新 linter](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas),或[提 issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose)。反馈会直接影响路线图。
 
 零配置 lint 反馈闭环 —— 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(`dsh`)插件,打通 **编辑 → lint → 修复** 的回路:模型编辑文件后,立刻看到 lint 发现(规则、file:line:col、消息、能否自动修),再一个 `lint_fix` 调用即可自动修复。使用仓库里已有的 linter——eslint、biome 或 ruff。零配置,不捆绑任何 linter。
 
@@ -200,7 +203,11 @@ node scripts/probe-linter.mjs /path/to/repo src/someFile.ts
 
 ## 反馈
 
-发现 bug,或想接下一个 linter?请[提 issue](https://github.com/lemonxiny55/dsh-lint-loop/issues)。
+- **问题、安装、用法** → [Discussions › Q&A](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a)
+- **想法、希望支持的 linter、闭环工作流** → [Discussions › Ideas](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas)
+- **可复现的 bug** → [提 issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose)
+
+如果 `dsh-lint-loop` 帮你省掉了一轮修复,点个 Star 能让更多 dsh 用户发现它。
 
 ## 许可
 

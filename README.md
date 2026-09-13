@@ -2,8 +2,11 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-lint-loop)](https://www.npmjs.com/package/dsh-lint-loop)
 [![CI](https://github.com/lemonxiny55/dsh-lint-loop/actions/workflows/ci.yml/badge.svg)](https://github.com/lemonxiny55/dsh-lint-loop/actions/workflows/ci.yml)
+[![Discussions](https://img.shields.io/github/discussions/lemonxiny55/dsh-lint-loop)](https://github.com/lemonxiny55/dsh-lint-loop/discussions)
 
 English | [中文](README.zh.md)
+
+**Using it?** Tell us what works and what breaks — [star the repo](https://github.com/lemonxiny55/dsh-lint-loop), [ask a question](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a), [request a linter](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas), or [open an issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose). Feedback directly shapes the roadmap.
 
 Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) plugin that closes the **edit → lint → fix** loop: the model edits a file, immediately sees the lint findings (rule, file:line:col, message, fixable), and can auto-repair them with one `lint_fix` call. Uses whatever the repo already has — eslint, biome, or ruff. No setup, no bundled linters.
 
@@ -200,7 +203,11 @@ The suite runs against `tests/helpers/fakeLinter.mjs` — a marker-driven fake (
 
 ## Feedback
 
-Found a bug, or want another linter next? Please [open an issue](https://github.com/lemonxiny55/dsh-lint-loop/issues).
+- **Questions, install help, usage** → [Discussions › Q&A](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a)
+- **Ideas, linter requests, loop workflow** → [Discussions › Ideas](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas)
+- **Reproducible bugs** → [open an issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose)
+
+If `dsh-lint-loop` saves you a fix loop, a star helps other dsh users find it.
 
 ## License
 

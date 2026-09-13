@@ -1,0 +1,62 @@
+name: Installation help
+description: The plugin will not install, load, or register its tools.
+title: "[install] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For general "how do I use this" questions, use [Discussions › Q&A](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a) instead — the issue tracker is for reproducible install failures.
+
+  - type: dropdown
+    id: method
+    attributes:
+      label: Install method
+      options:
+        - "npm — dsh plugin add dsh-lint-loop"
+        - "directory — dsh plugin add ./dsh-lint-loop"
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: profile
+    attributes:
+      label: dsh profile
+      placeholder: "web / desktop / ..."
+    validations:
+      required: true
+
+  - type: input
+    id: dsh-version
+    attributes:
+      label: dsh version
+      placeholder: "0.1.1-rc.2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command run & full output
+      description: The exact command and everything it printed.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: startup-logs
+    attributes:
+      label: Startup logs
+      description: Lines mentioning `dsh-lint-loop` from the Web UI / TUI startup, if the install "succeeded" but the tools are missing.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for this error.
+          required: true

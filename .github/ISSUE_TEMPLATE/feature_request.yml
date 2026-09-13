@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest a new linter, tool, config option, or behaviour.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For open-ended ideas and workflow discussion, [Discussions › Ideas](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas) is the lighter-weight place. Use this form when you have a concrete proposal.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the plugin does not support today?
+      placeholder: "Our repo is Rust + TypeScript; only the TS half gets lint feedback."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should change? Be as concrete as you can.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New linter (clippy, golangci-lint, stylelint, ...)
+        - Completion gate
+        - Tools (lint_diagnostics / lint_workspace_errors / lint_fix)
+        - Configuration
+        - Injected section / code frames
+        - Docs
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches, or how you work around this today.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for this.
+          required: true

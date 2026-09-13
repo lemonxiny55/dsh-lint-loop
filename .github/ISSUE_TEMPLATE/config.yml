@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions, install help & usage
+    url: https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a
+    about: Ask how to install, configure, or use dsh-lint-loop. The issue tracker is for reproducible problems.
+  - name: Ideas, linter requests & workflow feedback
+    url: https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas
+    about: Suggest a linter, a config option, or a change to the edit → lint → fix loop.

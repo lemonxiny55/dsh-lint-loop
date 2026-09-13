@@ -1,0 +1,97 @@
+name: Bug report
+description: Something in dsh-lint-loop is broken or misbehaving.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Reproduce the failure with `DSH_LINT_DEBUG=1` and paste the relevant log lines — it is the fastest path to a fix.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The behaviour you saw, and what you expected instead.
+      placeholder: "lint_fix reported a fix but the file was not rewritten."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Workspace with eslint.config.mjs and repo-local eslint installed
+        2. Ask the agent to edit src/a.ts (introduce an unused variable)
+        3. Call lint_fix { file_path: "src/a.ts" }
+        4. ...
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: dsh-lint-loop version
+      description: From the profile's package.json, or `dsh plugin --profile <name> list`.
+      placeholder: "0.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: dsh-version
+    attributes:
+      label: dsh version
+      placeholder: "0.1.1-rc.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: linter
+    attributes:
+      label: Linter
+      description: Which linter was the repo using when this happened?
+      options:
+        - eslint
+        - biome
+        - ruff
+        - none / not detected
+        - unsure
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS & shell
+      placeholder: "Windows 11 + PowerShell / macOS 15 + zsh / Ubuntu 24.04 + bash"
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Plugin config
+      description: The `lint-loop` row's `config` from your `cordis.patch.yml`, if it differs from the defaults.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug logs
+      description: Relevant lines from a run with `DSH_LINT_DEBUG=1` set.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for this.
+          required: true
+        - label: I am on the latest published version of the plugin.
+          required: false
