@@ -152,7 +152,7 @@ export const tools = [
     name: 'lint_diagnostics',
     description:
       'Lint findings (rule, file:line:col, message, fixable) for one file — or every file the linters have seen. '
-      + 'Uses the repo\'s own eslint / biome / ruff config, zero setup. Call right after editing a file.',
+      + 'Uses the repo\'s own eslint / biome / ruff / golangci-lint / cargo clippy config, zero setup. Call right after editing a file.',
     parameters: {
       file_path: {
         type: 'string',
@@ -241,7 +241,7 @@ export const tools = [
   defineTool({
     name: 'lint_fix',
     description:
-      'Auto-fix lint problems in ONE file with the repo\'s own linter (eslint --fix / biome check --write / ruff check --fix). '
+      'Auto-fix lint problems in ONE file with the repo\'s own linter (eslint --fix / biome check --write / ruff check --fix / golangci-lint run --fix / cargo clippy --fix). '
       + 'Returns what changed, remaining findings, and a line-change summary. Only works inside the workspace root.',
     parameters: {
       file_path: {

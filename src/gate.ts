@@ -49,22 +49,30 @@ export function markDirty(displayPath: string | undefined): void {
   }
 }
 
-/** Lint every queued file and collect the findings of the gated severity. */
+/** Lint every queued file (one run per package) and collect the gated severity. */
 async function collectErrors(files: readonly string[]): Promise<Finding[]> {
   const config = getConfig()
-  const out: Finding[] = []
+  const byRoot = new Map<string, string[]>()
   for (const displayPath of files) {
+    const root = await findRepoRoot(path.dirname(displayPath))
+    if (!root) continue
+    const abs = resolveFileInRoot(root, displayPath)
+    if (!abs || !linterFamilyForExt(extOf(abs))) continue
+    const list = byRoot.get(root) ?? []
+    list.push(abs)
+    byRoot.set(root, list)
+  }
+  const out: Finding[] = []
+  for (const [root, absPaths] of byRoot) {
     try {
-      const root = await findRepoRoot(path.dirname(displayPath))
-      if (!root) continue
-      const abs = resolveFileInRoot(root, displayPath)
-      if (!abs || !linterFamilyForExt(extOf(abs))) continue
-      const findings = await managerForRoot(root).lintFile(abs)
-      for (const finding of findings) {
-        if (finding.severity === config.gateSeverity) out.push(finding)
+      const results = await managerForRoot(root).lintMany(absPaths)
+      for (const findings of results.values()) {
+        for (const finding of findings) {
+          if (finding.severity === config.gateSeverity) out.push(finding)
+        }
       }
     } catch {
-      // No linter configured / unsupported file: nothing to gate on.
+      // No linter configured / unexpected failure: nothing to gate on.
     }
   }
   return out

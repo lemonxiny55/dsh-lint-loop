@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parseBiomeJson, parseEslintJson, parseRuffJson } from '../src/parse.js'
+import { parseBiomeJson, parseCargoClippyJson, parseEslintJson, parseGolangciJson, parseRuffJson } from '../src/parse.js'
 import { ParseError } from '../src/errors.js'
 
 const ROOT = '/repo' // path-only math for eslint/ruff — no fs reads involved
@@ -204,5 +204,102 @@ describe('parseRuffJson', () => {
 
   it('raises ParseError on malformed output', () => {
     expect(() => parseRuffJson('[broken', ROOT)).toThrow(ParseError)
+  })
+})
+
+describe('parseGolangciJson', () => {
+  it('maps golangci issues onto findings with 1-based positions', async () => {
+    const stdout = JSON.stringify({
+      Issues: [
+        {
+          FromLinter: 'govet',
+          Text: 'printf: non-constant format string',
+          Severity: '',
+          Pos: { Filename: '/repo/main.go', Line: 12, Column: 5 },
+          Replacement: null,
+        },
+        {
+          FromLinter: 'gofmt',
+          Text: 'File is not gofmt-ed',
+          Severity: 'warning',
+          Pos: { Filename: '/repo/main.go', Line: 1, Column: 1 },
+          SuggestedFixes: [{ TextEdits: [{ Pos: 1, End: 2, NewText: '' }] }],
+        },
+      ],
+    })
+    const findings = await parseGolangciJson(stdout, ROOT)
+    expect(findings).toHaveLength(2)
+    expect(findings[0]).toMatchObject({
+      rule: 'govet', file: 'main.go', line: 12, col: 5, severity: 'error', fixable: false, linter: 'golangci',
+    })
+    expect(findings[1]).toMatchObject({ rule: 'gofmt', severity: 'warning', fixable: true })
+  })
+
+  it('treats a legacy Replacement object as fixable too', async () => {
+    const stdout = JSON.stringify({
+      Issues: [{ FromLinter: 'goimports', Pos: { Filename: '/repo/a.go' }, Replacement: { NewLines: [] } }],
+    })
+    expect((await parseGolangciJson(stdout, ROOT))[0].fixable).toBe(true)
+  })
+
+  it('accepts a bare Issues array and raises ParseError on garbage', async () => {
+    const bare = JSON.stringify([{ FromLinter: 'x', Pos: { Filename: '/repo/a.go' } }])
+    expect(await parseGolangciJson(bare, ROOT)).toHaveLength(1)
+    await expect(parseGolangciJson('nope {', ROOT)).rejects.toThrow(ParseError)
+  })
+
+  it('resolves a relative reported path against the base directory', async () => {
+    const stdout = JSON.stringify({ Issues: [{ FromLinter: 'govet', Pos: { Filename: 'pkg/a.go', Line: 2, Column: 1 } }] })
+    const findings = await parseGolangciJson(stdout, '/repo', '/repo')
+    expect(findings[0].file).toBe('pkg/a.go')
+  })
+})
+
+describe('parseCargoClippyJson', () => {
+  it('maps compiler-message lines and skips artifact/build lines', async () => {
+    const lines = [
+      JSON.stringify({ reason: 'compiler-artifact', package_id: 'x' }),
+      JSON.stringify({
+        reason: 'compiler-message',
+        message: {
+          level: 'warning',
+          message: 'unneeded `return` statement',
+          code: { code: 'clippy::needless_return', explanation: null },
+          spans: [
+            {
+              file_name: '/repo/src/main.rs', line_start: 3, line_end: 3,
+              column_start: 5, column_end: 11, is_primary: true, suggested_replacement: null,
+            },
+          ],
+        },
+      }),
+      JSON.stringify({
+        reason: 'compiler-message',
+        message: {
+          level: 'error',
+          message: 'mismatched types',
+          code: { code: 'E0308', explanation: null },
+          spans: [
+            {
+              file_name: '/repo/src/main.rs', line_start: 9, line_end: 9,
+              column_start: 1, column_end: 3, is_primary: true,
+            },
+          ],
+          children: [{ spans: [{ suggested_replacement: 'x' }] }],
+        },
+      }),
+      JSON.stringify({ reason: 'build-finished', success: true }),
+    ].join('\n')
+    const findings = await parseCargoClippyJson(lines, ROOT)
+    expect(findings).toHaveLength(2)
+    expect(findings[0]).toMatchObject({
+      rule: 'clippy::needless_return', file: 'src/main.rs', line: 3, col: 5, severity: 'warning', fixable: false, linter: 'clippy',
+    })
+    expect(findings[1]).toMatchObject({ rule: 'E0308', severity: 'error', fixable: true })
+  })
+
+  it('returns no findings for a clean run and raises ParseError on garbage', async () => {
+    expect(await parseCargoClippyJson(JSON.stringify({ reason: 'build-finished', success: true }), ROOT)).toHaveLength(0)
+    await expect(parseCargoClippyJson('not ndjson', ROOT)).rejects.toThrow(ParseError)
   })
 })

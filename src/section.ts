@@ -53,7 +53,8 @@ export function createLintSection(): LintSection {
     const files = [...pending]
     pending = new Set()
     try {
-      const fresh: Finding[] = []
+      // Resolve each edited file to its workspace + absolute path, per root.
+      const byRoot = new Map<string, string[]>()
       for (const displayPath of files) {
         // The edit event is the ground truth — derive the workspace from the
         // file itself, so multi-workspace sessions each hit their own manager.
@@ -61,13 +62,25 @@ export function createLintSection(): LintSection {
         if (!root) continue
         const abs = resolveFileInRoot(root, displayPath)
         if (!abs || !linterFamilyForExt(extOf(abs))) continue
+        const list = byRoot.get(root) ?? []
+        list.push(abs)
+        byRoot.set(root, list)
+      }
 
+      const fresh: Finding[] = []
+      for (const [root, absPaths] of byRoot) {
         const manager = managerForRoot(root)
-        const previous = new Set(manager.findingsFor(abs).map(findingKey))
-        const findings = await manager.lintFile(abs)
-        for (const finding of findings) {
-          if (finding.severity !== getConfig().sectionSeverity) continue
-          if (!previous.has(findingKey(finding))) fresh.push(finding)
+        const previous = new Map<string, Set<string>>()
+        for (const abs of absPaths) {
+          previous.set(abs, new Set(manager.findingsFor(abs).map(findingKey)))
+        }
+        const results = await manager.lintMany(absPaths)
+        for (const [abs, findings] of results) {
+          const before = previous.get(abs) ?? new Set<string>()
+          for (const finding of findings) {
+            if (finding.severity !== getConfig().sectionSeverity) continue
+            if (!before.has(findingKey(finding))) fresh.push(finding)
+          }
         }
       }
       if (disposed) return

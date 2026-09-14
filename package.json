@@ -1,7 +1,7 @@
 {
   "name": "dsh-lint-loop",
-  "version": "0.2.0",
-  "description": "Zero-config lint feedback loop for DeepSeek Harness — model-visible lint_diagnostics / lint_workspace_errors / lint_fix tools (eslint / biome / ruff, auto-detected) plus an auto-injected post-edit findings section, closing the edit → lint → fix loop.",
+  "version": "0.3.0",
+  "description": "Zero-config lint feedback loop for DeepSeek Harness — model-visible lint_diagnostics / lint_workspace_errors / lint_fix tools (eslint / biome / ruff / golangci-lint / cargo clippy, auto-detected) plus an auto-injected post-edit findings section, closing the edit → lint → fix loop.",
   "type": "module",
   "main": "./dist/index.js",
   "files": [
@@ -23,6 +23,10 @@
     "eslint",
     "biome",
     "ruff",
+    "golangci-lint",
+    "clippy",
+    "golang",
+    "rust",
     "diagnostics"
   ],
   "dsh": {

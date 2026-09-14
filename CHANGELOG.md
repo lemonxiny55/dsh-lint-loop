@@ -2,6 +2,14 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## 0.3.0 — 2026-09-14
+
+- **feat(detect):** Go (`golangci-lint`) is detected via any `.golangci.yml` / `.golangci.yaml` / `.golangci.toml` / `.golangci.json`; Rust (`cargo clippy`) via a `Cargo.toml` (clippy ships with the toolchain). `.go` routes to golangci-lint, `.rs` to clippy; config-basename changes re-probe as before.
+- **feat(linters):** two **package-scoped** linters. `golangci-lint` runs `run --output.json.path=stdout` (v2) with an automatic `--out-format=json` fallback (v1); `cargo clippy` runs `clippy --message-format=json` in the nearest `Cargo.toml` directory. Per-linter timeout floors (60s / 120s) keep the 10s default from killing a cold cargo build.
+- **feat(parse):** golangci-lint `{ Issues: [...] }` → findings (empty `Severity` → `error`; `SuggestedFixes` in v1.64+/v2 or a legacy `Replacement` → `fixable`); cargo clippy NDJSON `compiler-message` → findings (`clippy::*` / `E####` codes, child-span suggestion → `fixable`). Reported paths resolve against the run's base directory (workspace root / crate root) with an existence fallback.
+- **feat(manager):** package-scoped results are **distributed** into the store by each finding's own file, so `lint_diagnostics { file }` stays per-file; a new batched `lintMany` runs one package linter per package, so the completion gate and the injected section analyze N edited files in a crate with a single `cargo clippy` run.
+- **docs/tests:** README (EN+ZH) tables and supported-linter sections updated; 109 tests (up from 94) — new coverage for Go/Rust detection + routing, both parsers, package-scope distribution, single-run batching, crate-root resolution, and package-linter auto-fix, all via the extended marker-driven fake linter (new golangci-lint and cargo-clippy modes).
+
 ## 0.2.0 — 2026-09-10
 
 The P0 loop upgrades: a completion gate, source code frames, and a slimmer injected section.

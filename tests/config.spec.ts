@@ -73,15 +73,16 @@ describe('applyConfig / getConfig', () => {
 })
 
 describe('file routing', () => {
-  it('routes JS-family and Python extensions to their linter families', () => {
+  it('routes JS-family, Python, Go and Rust extensions to their linter families', () => {
     expect(linterFamilyForExt('.ts')).toBe('js')
     expect(linterFamilyForExt('.TSX')).toBe('js')
     expect(linterFamilyForExt('.mjs')).toBe('js')
     expect(linterFamilyForExt('.cts')).toBe('js')
     expect(linterFamilyForExt('.py')).toBe('py')
     expect(linterFamilyForExt('.pyi')).toBe('py')
+    expect(linterFamilyForExt('.go')).toBe('go')
+    expect(linterFamilyForExt('.rs')).toBe('rust')
     expect(linterFamilyForExt('.md')).toBeNull()
-    expect(linterFamilyForExt('.rs')).toBeNull()
   })
 })
 
@@ -113,5 +114,17 @@ describe('resolveCommand', () => {
     expect(LINTER_SPECS.eslint.fixArgs).toContain('--fix')
     expect(LINTER_SPECS.biome.fixArgs).toContain('--write')
     expect(LINTER_SPECS.ruff.fixArgs).toContain('--fix')
+    expect(LINTER_SPECS.golangci.lintArgs).toContain('--output.json.path=stdout')
+    expect(LINTER_SPECS.golangci.fixArgs).toContain('--fix')
+    expect(LINTER_SPECS.clippy.lintArgs).toContain('--message-format=json')
+    expect(LINTER_SPECS.clippy.fixArgs).toContain('--fix')
+  })
+
+  it('declares a scope and a package-scoped timeout floor for the new linters', () => {
+    expect(LINTER_SPECS.eslint.scope).toBe('file')
+    expect(LINTER_SPECS.golangci.scope).toBe('dir')
+    expect(LINTER_SPECS.clippy.scope).toBe('cwd')
+    expect(LINTER_SPECS.golangci.minTimeoutMs).toBeGreaterThanOrEqual(60_000)
+    expect(LINTER_SPECS.clippy.minTimeoutMs).toBeGreaterThanOrEqual(120_000)
   })
 })

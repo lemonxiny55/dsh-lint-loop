@@ -2,7 +2,8 @@
  * dsh-lint-loop — DeepSeek Harness bundle entry.
  *
  * Registers model-visible lint tools (lint_diagnostics / lint_workspace_errors
- * / lint_fix) backed by auto-detected linters (eslint / biome / ruff), injects
+ * / lint_fix) backed by auto-detected linters (eslint / biome / ruff /
+ * golangci-lint / cargo clippy), injects
  * a compact "what your last edit broke" delta into the system prompt, and —
  * when the completion gate is on — steers the agent for another step while
  * files it just edited still carry lint errors.
@@ -29,15 +30,7 @@ interface MinimalContext {
 export const name = 'dsh-lint-loop'
 
 // Public API surface (consumable by other bundles / tests).
-export { tools } from './tools.js'
-export { LintManager, disposeAllManagers, managerForRoot } from './manager.js'
-export {
-  LINTER_KEYS,
-  linterFamilyForExt,
-  resolveCommand,
-  LINTER_SPECS,
-  type LinterKey,
-} from './linters.js'
+export { applyConfig, getConfig, type PluginConfig } from './config.js'
 export {
   chooseLinter,
   detectLinters,
@@ -56,12 +49,21 @@ export {
   type Finding,
   type Severity,
 } from './findings.js'
-export { parseEslintJson, parseBiomeJson, parseRuffJson } from './parse.js'
 export { clearFrameCache, frameFor, recordFileLines } from './frames.js'
 export { handleTurnStopping, markDirty, steeringCountFor, clearGateState, type TurnStoppingPayload } from './gate.js'
-export { applyConfig, getConfig, type PluginConfig } from './config.js'
-export { findRepoRoot } from './workspace.js'
+export {
+  LINTER_KEYS,
+  linterFamilyForExt,
+  resolveCommand,
+  LINTER_SPECS,
+  type LinterKey,
+  type LinterScope,
+} from './linters.js'
+export { LintManager, disposeAllManagers, managerForRoot } from './manager.js'
+export { parseEslintJson, parseBiomeJson, parseRuffJson, parseGolangciJson, parseCargoClippyJson } from './parse.js'
 export { createLintSection } from './section.js'
+export { tools } from './tools.js'
+export { findRepoRoot } from './workspace.js'
 
 import { applyConfig, getConfig, type PluginConfig } from './config.js'
 import { invalidateProbes, isLinterConfigBasename } from './detect.js'

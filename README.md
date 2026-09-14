@@ -8,7 +8,7 @@ English | [中文](README.zh.md)
 
 **Using it?** Tell us what works and what breaks — [star the repo](https://github.com/lemonxiny55/dsh-lint-loop), [ask a question](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a), [request a linter](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas), or [file an issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose). Feedback directly shapes the roadmap.
 
-Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) plugin that closes the **edit → lint → fix** loop: the model edits a file, immediately sees the lint findings (rule, file:line:col, message, fixable), and can auto-repair them with one `lint_fix` call. Uses whatever the repo already has — eslint, biome, or ruff. No setup, no bundled linters.
+Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) plugin that closes the **edit → lint → fix** loop: the model edits a file, immediately sees the lint findings (rule, file:line:col, message, fixable), and can auto-repair them with one `lint_fix` call. Uses whatever the repo already has — eslint, biome, ruff, golangci-lint, or cargo clippy. No setup, no bundled linters.
 
 ## What the model gets
 
@@ -16,7 +16,7 @@ Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deeps
 |---|---|
 | `lint_diagnostics` | Lint findings for one file (or all files the linters have seen), with rule, `file:line:col`, message, and a `fixable` flag; severity filter and `max` cap. Takes `file_path` (alias `file`). **Call right after editing a file.** |
 | `lint_workspace_errors` | All errors across files linted this session — the "what is broken right now" view. |
-| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, and the linter used. Takes `file_path` (alias `file`). Workspace-root files only. |
+| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, and the linter used. Takes `file_path` (alias `file`). Workspace-root files only. |
 
 Plus an optional **auto-injected system prompt section** (`lint:findings`, order 75 — right after `lsp:diagnostics`): after the model writes/edits a file through the harness, the plugin subscribes to the `fs/observed` event, lints the file through its serial pool, and injects only the **new/changed findings introduced by that edit** — **errors only by default** (set `sectionSeverity` for more), top 5 lines, never the whole workspace. Stale deltas expire (`sectionTtlMs`, default 30s). Rendered findings carry a **source code frame** (the offending line marked `█`, plus a line of context) so the model fixes without re-reading the file. And the **completion gate** (below) stops the turn from closing while edited files still have errors.
 
@@ -68,10 +68,12 @@ The plugin probes the repo root for what is already there and routes by extensio
 | `eslint.config.{js,mjs,cjs,ts}` or `.eslintrc.{js,cjs,json,yml}` | eslint | `.ts .tsx .mts .cts .js .jsx .mjs .cjs` |
 | `biome.json` / `biome.jsonc` | biome | same JS family |
 | `ruff.toml` / `.ruff.toml` / `pyproject.toml` with `[tool.ruff]` | ruff | `.py .pyi` |
+| `.golangci.yml` / `.golangci.yaml` / `.golangci.toml` / `.golangci.json` | golangci-lint | `.go` |
+| `Cargo.toml` | cargo clippy | `.rs` |
 
 - **Multiple configs coexist?** JS-family files go to eslint by default; biome only when a biome config exists WITHOUT an eslint config. Force the set with the `linters` config key.
 - **Repo-local installs work**: `npm i -D eslint` puts the binary in `node_modules/.bin` — the plugin resolves it before `PATH`.
-- **Nothing configured?** The plugin stays quiet; calling a tool returns the init hint (`npx eslint --init` / `biome init` / ruff) instead of an error.
+- **Nothing configured?** The plugin stays quiet; calling a tool returns the init hint (`npx eslint --init` / `biome init` / ruff / a `.golangci.yml` / a `Cargo.toml`) instead of an error.
 - **Config file changes** (adding `biome.json` mid-session, say) are observed and re-probed automatically.
 
 Example (input → output):
@@ -159,14 +161,16 @@ Options are passed as the plugin row's `config` in the profile patch (or default
 - **eslint** (`--no-warn-ignored -f json`): flat config and legacy `.eslintrc`; versions that reject `--no-warn-ignored` (< 8.22) fall back automatically, remembered per repo.
 - **biome** (`check --reporter=json`): both the ≥ 2 reporter shape (1-based line/column, CLI-relative string path) and the legacy byte-offset `span` shape; `format`/`organizeImports` diffs are NOT findings.
 - **ruff** (`check --output-format=json`): 1-based positions; `fix` present → `fixable: true`; every violation is an error (ruff has no severities).
+- **golangci-lint** (`run --output.json.path=stdout`, with a v1 `--out-format=json` fallback): package-scoped — the file's directory is analyzed and findings are distributed across every file the run reports; an empty `Severity` counts as `error`; `SuggestedFixes` (v1.64+/v2) or a legacy `Replacement` marks `fixable`.
+- **cargo clippy** (`clippy --message-format=json`): crate-scoped — runs in the nearest `Cargo.toml` directory; NDJSON `compiler-message` lines become findings (`clippy::*` / `E####` codes), and a child-span suggestion marks `fixable`. Type-checks the crate, so cold runs are slow (timeout floor 120s; `golangci-lint` 60s).
 
-Rust (`clippy`), Go (`golangci-lint`), and friends are deliberately deferred — `linters.ts` + `parse.ts` are the seams where further linters plug in (command, args, JSON shape, install hint).
+`linters.ts` + `parse.ts` remain the seams where further linters plug in (command, args, JSON shape, install hint).
 
 ## How it works
 
 - **Detection** (`src/detect.ts`): config-file probe per repo root, cached, invalidated when an observed event carries a linter config basename (`biome.json`, `pyproject.toml`, …). `pyproject.toml` counts as ruff only when it really contains `[tool.ruff]`.
 - **Runner pool** (`src/runner.ts`): one serial lane per (root, linter) — a save storm queues instead of stampeding; each run is a one-shot spawn with capped stdout/stderr, killed at `timeoutMs` (SIGTERM → SIGKILL grace).
-- **Findings store** (`src/manager.ts`): per-root manager keeps the last lint result per file (512-file soft cap); `lint_fix` reads the file before and after the fix run, summarizes the line diff, and re-lints for the authoritative remaining set.
+- **Findings store** (`src/manager.ts`): per-root manager keeps the last lint result per file (512-file soft cap); `lint_fix` reads the file before and after the fix run, summarizes the line diff, and re-lints for the authoritative remaining set. Package-scoped runs are distributed — findings land under the file each one reports, so `lint_diagnostics { file }` stays per-file.
 - **Edit detection** (`src/section.ts`): the `fs/observed` listener only queues the file (sync, never throws); a debounced (`settleMs`) refresh lints and diffs against the per-file previous state — only new/changed findings of the configured severity reach the prompt, capped to the top 5.
 - **Code frames** (`src/frames.ts`): source lines are cached during a lint run and attached to the first `frameLimit` rendered findings, with the offending line marked `█`; the render path stays synchronous and degrades to no frame when the cache is cold (replay).
 - **Completion gate** (`src/gate.ts`): files observed during the turn are re-linted at `agent/turn-stopping`; remaining errors trigger a bounded `agent.steer` (≤ `gateMaxSteers` per turn) that carries the findings.
@@ -182,6 +186,7 @@ The two plugins are **complementary and coexist**: `dsh-lsp-diagnostics` covers 
 - `lint_workspace_errors` covers files linted **this session** (a file joins the set the first time `lint_diagnostics` checks it) — not a whole-repo batch scan.
 - Biome's JSON reporter does not expose fixability — `fixable` is `false` for biome findings, but `lint_fix` still runs `biome check --write` and reports what actually changed.
 - Ruff has no severities — all ruff findings surface as `error`.
+- Package-scoped linters (`golangci-lint`, `cargo clippy`) analyze a package/crate, not a single file: one run covers all edited files in that package, findings are attributed to the file each one reports, and only the file passed to `lint_fix` is diffed. `cargo clippy` type-checks the crate, so its first run can far exceed the 120s floor.
 - Auto-injection triggers on harness file events; direct out-of-band edits (the user editing files externally) are not observed until the tool is called.
 - Linters must be installed (repo-local `node_modules/.bin` is resolved first, then `PATH`, then `linterPath`); nothing is bundled, by design.
 - The completion gate is a bounded nudge, not a hard block: it forces at most `gateMaxSteers` continuations per turn, then admits the turn — it can never wedge a session.

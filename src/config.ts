@@ -10,7 +10,7 @@ export interface PluginConfig {
   maxFindings?: number
   /** Force specific linters (e.g. ['biome']) instead of the auto-detected set. Unknown keys are warned once. */
   linters?: LinterKey[]
-  /** Optional override of the linter binary path, per linter ('eslint' | 'biome' | 'ruff'). A path ending in .js/.mjs/.cjs runs under the current Node — the seam the test fakes use. */
+  /** Optional override of the linter binary path, per linter ('eslint' | 'biome' | 'ruff' | 'golangci' | 'clippy'). A path ending in .js/.mjs/.cjs runs under the current Node — the seam the test fakes use. */
   linterPath?: Record<string, string>
   /** How long the injected post-edit delta stays in the prompt (ms, min 1000) — stale news is dropped. */
   sectionTtlMs?: number

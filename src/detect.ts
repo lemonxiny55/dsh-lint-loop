@@ -1,7 +1,7 @@
 /**
- * Zero-config linter detection: probe a repo root for eslint / biome / ruff
- * configuration files, cache per root, and invalidate when a config file
- * changes (the fs/observed listener calls `invalidateProbes`).
+ * Zero-config linter detection: probe a repo root for eslint / biome / ruff /
+ * golangci-lint / clippy configuration files, cache per root, and invalidate
+ * when a config file changes (the fs/observed listener calls `invalidateProbes`).
  */
 
 import { access, readFile } from 'node:fs/promises'
@@ -13,6 +13,8 @@ export interface DetectedLinters {
   eslint: boolean
   biome: boolean
   ruff: boolean
+  golangci: boolean
+  clippy: boolean
 }
 
 const ESLINT_CONFIG_FILES = [
@@ -30,11 +32,23 @@ const BIOME_CONFIG_FILES = ['biome.json', 'biome.jsonc'] as const
 
 const RUFF_CONFIG_FILES = ['ruff.toml', '.ruff.toml'] as const
 
+const GOLANGCI_CONFIG_FILES = [
+  '.golangci.yml',
+  '.golangci.yaml',
+  '.golangci.toml',
+  '.golangci.json',
+] as const
+
+/** Clippy ships with the toolchain — a Cargo project is the detection signal. */
+const CLIPPY_CONFIG_FILES = ['Cargo.toml'] as const
+
 /** Every config basename that feeds the probe — a change to any of these invalidates the cache. */
 const ALL_CONFIG_BASENAMES = new Set<string>([
   ...ESLINT_CONFIG_FILES,
   ...BIOME_CONFIG_FILES,
   ...RUFF_CONFIG_FILES,
+  ...GOLANGCI_CONFIG_FILES,
+  ...CLIPPY_CONFIG_FILES,
   'pyproject.toml',
 ])
 
@@ -70,11 +84,15 @@ export async function detectLinters(root: string): Promise<DetectedLinters> {
     Promise.all(BIOME_CONFIG_FILES.map((name) => exists(path.join(root, name)))),
     Promise.all(RUFF_CONFIG_FILES.map((name) => exists(path.join(root, name)))),
     hasToolRuffSection(path.join(root, 'pyproject.toml')),
+    Promise.all(GOLANGCI_CONFIG_FILES.map((name) => exists(path.join(root, name)))),
+    Promise.all(CLIPPY_CONFIG_FILES.map((name) => exists(path.join(root, name)))),
   ])
   return {
     eslint: checks[0].some(Boolean),
     biome: checks[1].some(Boolean),
     ruff: checks[2].some(Boolean) || checks[3],
+    golangci: checks[4].some(Boolean),
+    clippy: checks[5].some(Boolean),
   }
 }
 
@@ -110,7 +128,7 @@ export async function usableLinters(root: string): Promise<LinterKey[]> {
 
 /**
  * Pick the linter for a file:
- * - `.py/.pyi` → ruff (when usable),
+ * - `.py/.pyi` → ruff, `.go` → golangci-lint, `.rs` → clippy (when usable),
  * - JS-family → eslint by default; biome only when a biome config exists and
  *   an eslint config does NOT (multiple coexisting configs route by extension,
  *   and eslint wins the tie — per the plugin's routing rule).
@@ -120,9 +138,9 @@ export async function chooseLinter(root: string, absPath: string): Promise<Linte
   const family = linterFamilyForExt(path.extname(absPath))
   if (!family) return null
   const usable = await usableLinters(root)
-  if (family === 'py') {
-    return usable.includes('ruff') ? 'ruff' : null
-  }
+  if (family === 'py') return usable.includes('ruff') ? 'ruff' : null
+  if (family === 'go') return usable.includes('golangci') ? 'golangci' : null
+  if (family === 'rust') return usable.includes('clippy') ? 'clippy' : null
   if (usable.includes('eslint')) return 'eslint'
   if (usable.includes('biome')) return 'biome'
   return null

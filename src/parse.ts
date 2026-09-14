@@ -3,7 +3,7 @@
  * is defensive (missing fields fall back, malformed input raises ParseError).
  */
 
-import { readFile } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { ParseError } from './errors.js'
 import type { Finding, Severity } from './findings.js'
@@ -242,7 +242,166 @@ export function parseRuffJson(stdout: string, root: string): Finding[] {
   return findings
 }
 
-export function parseFindingsFor(linter: LinterKey, stdout: string, root: string): Finding[] | Promise<Finding[]> {
+// ---------------------------------------------------------------------------
+// golangci-lint — `{ Issues: [ { FromLinter, Text, Severity,
+// Pos: { Filename, Line, Column }, Replacement } ] }` (1-based positions;
+// an empty Severity means the issue is a plain error)
+// ---------------------------------------------------------------------------
+
+interface GolangciIssue {
+  FromLinter?: string
+  Text?: string
+  Severity?: string
+  /** Legacy replacement object (golangci-lint v1 <= 1.63). */
+  Replacement?: unknown
+  /** go/analysis suggested fixes (golangci-lint v1.64+ and v2). */
+  SuggestedFixes?: Array<{ TextEdits?: unknown[] }> | null
+  Pos?: { Filename?: string; Line?: number; Column?: number }
+}
+
+interface GolangciReport {
+  Issues?: GolangciIssue[]
+}
+
+export async function parseGolangciJson(
+  stdout: string,
+  root: string,
+  baseDir: string = root,
+): Promise<Finding[]> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stdout)
+  } catch (error) {
+    throw new ParseError('golangci', (error as Error).message)
+  }
+  const issues = Array.isArray(parsed)
+    ? (parsed as GolangciIssue[])
+    : (parsed as GolangciReport | null)?.Issues
+  if (!Array.isArray(issues)) throw new ParseError('golangci', 'expected an "Issues" array')
+  const findings: Finding[] = []
+  for (const issue of issues) {
+    if (!issue || typeof issue !== 'object') continue
+    const rawPath = issue.Pos?.Filename
+    if (!rawPath) continue
+    const absFile = await resolveReportedPath(rawPath, baseDir, root)
+    const severity: Severity =
+      issue.Severity === 'warning' ? 'warning' : issue.Severity === 'info' ? 'info' : 'error'
+    const line = issue.Pos?.Line ?? 1
+    const col = issue.Pos?.Column ?? 1
+    const fixable = issue.Replacement != null || (issue.SuggestedFixes?.length ?? 0) > 0
+    findings.push({
+      rule: issue.FromLinter || 'golangci',
+      file: relFile(absFile, root),
+      line,
+      col,
+      endLine: line,
+      endCol: col,
+      severity,
+      message: issue.Text ?? '',
+      fixable,
+      linter: 'golangci',
+    })
+  }
+  return findings
+}
+
+// ---------------------------------------------------------------------------
+// cargo clippy — NDJSON: one JSON object per line; only lines with
+// `reason: "compiler-message"` carry a rustc/clippy diagnostic. Levels other
+// than error/warning are child notes and are skipped.
+// ---------------------------------------------------------------------------
+
+interface RustSpan {
+  file_name?: string
+  line_start?: number
+  line_end?: number
+  column_start?: number
+  column_end?: number
+  is_primary?: boolean
+  suggested_replacement?: string | null
+}
+
+interface RustDiagnosticMessage {
+  level?: string
+  message?: string
+  code?: { code?: string | null } | null
+  spans?: RustSpan[]
+  children?: Array<{ spans?: RustSpan[] }>
+}
+
+interface CargoStreamLine {
+  reason?: string
+  message?: RustDiagnosticMessage
+}
+
+export async function parseCargoClippyJson(
+  stdout: string,
+  root: string,
+  baseDir: string = root,
+): Promise<Finding[]> {
+  const findings: Finding[] = []
+  let sawJson = false
+  for (const line of stdout.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed.startsWith('{')) continue
+    let parsed: CargoStreamLine
+    try {
+      parsed = JSON.parse(trimmed) as CargoStreamLine
+    } catch {
+      continue
+    }
+    sawJson = true
+    if (parsed.reason !== 'compiler-message') continue
+    const message = parsed.message
+    const level = message?.level
+    if (level !== 'error' && level !== 'warning') continue
+    const spans = message?.spans ?? []
+    const primary = spans.find((span) => span.is_primary) ?? spans[0]
+    if (!primary?.file_name) continue
+    const absFile = await resolveReportedPath(primary.file_name, baseDir, root)
+    const childSpans = (message?.children ?? []).flatMap((child) => child.spans ?? [])
+    const fixable = [...spans, ...childSpans].some((span) => span.suggested_replacement != null)
+    findings.push({
+      rule: message?.code?.code || 'rustc',
+      file: relFile(absFile, root),
+      line: primary.line_start ?? 1,
+      col: primary.column_start ?? 1,
+      endLine: primary.line_end ?? primary.line_start ?? 1,
+      endCol: primary.column_end ?? primary.column_start ?? 1,
+      severity: level === 'error' ? 'error' : 'warning',
+      message: message?.message ?? '',
+      fixable,
+      linter: 'clippy',
+    })
+  }
+  // A clean run emits only artifact/build lines; no JSON at all means garbage.
+  if (!sawJson && stdout.trim()) throw new ParseError('clippy', stdout.trim().slice(0, 300))
+  return findings
+}
+
+/**
+ * Resolve a linter-reported path that may be relative to the run's base
+ * directory (workspace root for most linters, the crate root for clippy).
+ * Prefers the base-dir interpretation and falls back to the workspace root.
+ */
+async function resolveReportedPath(raw: string, baseDir: string, root: string): Promise<string> {
+  if (path.isAbsolute(raw)) return raw
+  const fromBase = path.resolve(baseDir, raw)
+  try {
+    await access(fromBase)
+    return fromBase
+  } catch {
+    const fromRoot = path.resolve(root, raw)
+    return fromRoot === fromBase ? fromBase : fromRoot
+  }
+}
+
+export function parseFindingsFor(
+  linter: LinterKey,
+  stdout: string,
+  root: string,
+  baseDir?: string,
+): Finding[] | Promise<Finding[]> {
   switch (linter) {
     case 'eslint':
       return parseEslintJson(stdout, root)
@@ -250,5 +409,9 @@ export function parseFindingsFor(linter: LinterKey, stdout: string, root: string
       return parseBiomeJson(stdout, root)
     case 'ruff':
       return parseRuffJson(stdout, root)
+    case 'golangci':
+      return parseGolangciJson(stdout, root, baseDir)
+    case 'clippy':
+      return parseCargoClippyJson(stdout, root, baseDir)
   }
 }

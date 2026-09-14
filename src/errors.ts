@@ -24,7 +24,7 @@ export class NoConfigError extends Error {
       : 'No linter configuration found. '
     super(
       `no usable linter configuration in ${root}. ${hints}` +
-        'Initialize one to activate dsh-lint-loop: npx eslint --init (JS/TS), biome init, or ruff (Python, add [tool.ruff] to pyproject.toml).',
+        'Initialize one to activate dsh-lint-loop: npx eslint --init (JS/TS), biome init, ruff (Python, add [tool.ruff] to pyproject.toml), a .golangci.yml (Go), or a Cargo.toml (Rust — clippy ships with the toolchain).',
     )
     this.name = 'NoConfigError'
   }
