@@ -11,6 +11,15 @@
  */
 
 import path from 'node:path'
+import {
+  clearAllBaselines,
+  clearBaseline,
+  classifyFindings,
+  ensureBaseline,
+  hasBaseline,
+  ownerFromAgent,
+  type BaselineOwner,
+} from './baseline.js'
 import { getConfig } from './config.js'
 import { renderFindings, sortFindings, type Finding } from './findings.js'
 import { linterFamilyForExt, extOf } from './linters.js'
@@ -19,6 +28,7 @@ import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 
 interface SteerableAgent {
   id?: string
+  session?: object
   steer(message: unknown): void
 }
 
@@ -30,6 +40,7 @@ export interface TurnStoppingPayload {
 
 /** Files observed (written/edited) since the last gate evaluation. */
 const dirty = new Set<string>()
+const dirtyByOwner = new Map<BaselineOwner, Set<string>>()
 /** Forced continuations per `${sessionId}::${turn}`. */
 const steers = new Map<string, number>()
 
@@ -38,11 +49,17 @@ function debug(...args: unknown[]): void {
 }
 
 /** Queue a file from an fs/observed event. Synchronous, never throws. */
-export function markDirty(displayPath: string | undefined): void {
+export function markDirty(displayPath: string | undefined, owner?: BaselineOwner): void {
   try {
     if (displayPath) {
       debug('markDirty', displayPath)
-      dirty.add(displayPath)
+      if (owner) {
+        const files = dirtyByOwner.get(owner) ?? new Set<string>()
+        files.add(displayPath)
+        dirtyByOwner.set(owner, files)
+      } else {
+        dirty.add(displayPath)
+      }
     }
   } catch {
     // fs/observed listeners must be infallible.
@@ -50,7 +67,7 @@ export function markDirty(displayPath: string | undefined): void {
 }
 
 /** Lint every queued file (one run per package) and collect the gated severity. */
-async function collectErrors(files: readonly string[]): Promise<Finding[]> {
+async function collectErrors(files: readonly string[], owner: BaselineOwner | undefined): Promise<Finding[]> {
   const config = getConfig()
   const byRoot = new Map<string, string[]>()
   for (const displayPath of files) {
@@ -65,9 +82,17 @@ async function collectErrors(files: readonly string[]): Promise<Finding[]> {
   const out: Finding[] = []
   for (const [root, absPaths] of byRoot) {
     try {
-      const results = await managerForRoot(root).lintMany(absPaths)
-      for (const findings of results.values()) {
-        for (const finding of findings) {
+      const manager = managerForRoot(root)
+      for (const abs of absPaths) {
+        // The owner-less path is the pre-0.4 integration seam: markDirty()
+        // means "a mutation just happened", so its fallback baseline starts
+        // empty. Modern DSH captures the real pre-edit findings in intent.
+        if (!hasBaseline(owner, abs)) ensureBaseline(owner, abs, owner ? manager.findingsFor(abs) : [])
+      }
+      const results = await manager.lintMany(absPaths)
+      for (const abs of absPaths) {
+        const delta = classifyFindings(owner, abs, results.get(abs) ?? manager.findingsFor(abs))
+        for (const finding of [...delta.introduced, ...delta.changed]) {
           if (finding.severity === config.gateSeverity) out.push(finding)
         }
       }
@@ -107,19 +132,35 @@ function createSteerMessage(text: string): unknown {
 export async function handleTurnStopping(payload: TurnStoppingPayload): Promise<string | undefined> {
   try {
     const config = getConfig()
-    const files = [...dirty]
+    const owner = ownerFromAgent(payload.agent)
+    const owned = owner ? dirtyByOwner.get(owner) : undefined
+    const files = [...new Set([...dirty, ...(owned ? [...owned] : [])])]
+    // A legacy caller can still use the public markDirty(path) seam without
+    // an actor/session. Keep that path on the global baseline instead of
+    // accidentally treating the manager's current findings as pre-existing.
+    const trackingOwner = owned ? owner : undefined
     dirty.clear()
+    if (owned && owner) dirtyByOwner.delete(owner)
     debug('turn-stopping', 'gate=', config.gate, 'maxSteers=', config.gateMaxSteers, 'dirtyFiles=', files.length)
-    if (!config.gate || config.gateMaxSteers <= 0) return undefined
+    if (!config.gate || config.gateMaxSteers <= 0) {
+      clearBaseline(trackingOwner, files)
+      return undefined
+    }
     if (files.length === 0) return undefined
 
-    const errors = await collectErrors(files)
+    const errors = await collectErrors(files, trackingOwner)
     debug('turn-stopping errors=', errors.length)
-    if (errors.length === 0) return undefined
+    if (errors.length === 0) {
+      clearBaseline(trackingOwner, files)
+      return undefined
+    }
 
     const key = `${payload.agent.id ?? 'session'}::${payload.turn}`
     const used = steers.get(key) ?? 0
-    if (used >= config.gateMaxSteers) return undefined
+    if (used >= config.gateMaxSteers) {
+      clearBaseline(trackingOwner, files)
+      return undefined
+    }
     steers.set(key, used + 1)
 
     const text = renderGateText(errors)
@@ -137,5 +178,7 @@ export function steeringCountFor(sessionId: string, turn: number): number {
 
 export function clearGateState(): void {
   dirty.clear()
+  dirtyByOwner.clear()
   steers.clear()
+  clearAllBaselines()
 }

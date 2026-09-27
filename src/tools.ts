@@ -2,8 +2,25 @@
 
 import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
 import path from 'node:path'
+import {
+  classifyFindings,
+  classifyWithoutBaseline,
+  ensureBaseline,
+  hasBaseline,
+  ownerFromActor,
+  type BaselineOwner,
+} from './baseline.js'
 import { getConfig } from './config.js'
-import { capFindings, filterFindings, renderFindings, sortFindings, type Finding, type Severity } from './findings.js'
+import {
+  capFindings,
+  filterFindings,
+  matchFindings,
+  renderFindings,
+  sortFindings,
+  type Finding,
+  type FindingScope,
+  type Severity,
+} from './findings.js'
 import { frameFor } from './frames.js'
 import { markDirty } from './gate.js'
 import { LintManager, managerForRoot, type FixResult } from './manager.js'
@@ -25,6 +42,8 @@ interface TextBlock {
 /** Canonical output element: a finding, a truncation note, or an error. */
 type FindingValue = Finding | { note: string } | { error: string }
 
+type DiagnosticScope = 'all' | 'introduced' | 'preexisting'
+
 function isRecord(value: JsonValue): value is { [key: string]: JsonValue } {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -39,6 +58,12 @@ function isFindingValue(value: JsonValue): boolean {
     && typeof value.message === 'string'
     && (value.severity === 'error' || value.severity === 'warning' || value.severity === 'info')
   )
+}
+
+/** Strip the source matcher context from model JSON while retaining scope. */
+function publicFinding(finding: Finding & { scope?: FindingScope }): JsonValue {
+  const { context: _context, ...value } = finding
+  return value as unknown as JsonValue
 }
 
 /** A per-render resolver that frames at most `frameLimit` findings. */
@@ -72,7 +97,7 @@ function renderFindingValue(value: JsonValue[]): TextBlock[] {
 
 /** Canonical array + a truncation note when the cap bit. */
 function toCanonical(findings: readonly Finding[], dropped: number): JsonValue[] {
-  const value: JsonValue[] = findings.map((finding) => finding as unknown as JsonValue)
+  const value: JsonValue[] = findings.map(publicFinding)
   if (dropped > 0) {
     value.push({ note: `+${dropped} more suppressed — raise the max parameter or maxFindings config` })
   }
@@ -134,7 +159,7 @@ function renderFixResult(value: Record<string, JsonValue>): TextBlock[] {
 }
 
 function fixResultToCanonical(result: FixResult): Record<string, JsonValue> {
-  const remaining: JsonValue[] = result.remaining.map((finding) => finding as unknown as JsonValue)
+  const remaining: JsonValue[] = result.remaining.map(publicFinding)
   if (result.dropped > 0) {
     remaining.push({ note: `+${result.dropped} more suppressed — raise the max parameter or maxFindings config` })
   }
@@ -145,6 +170,33 @@ function fixResultToCanonical(result: FixResult): Record<string, JsonValue> {
     changedLines: { added: result.addedLines, removed: result.removedLines },
     remaining,
   }
+}
+
+function ownerForExec(exec: ToolRunExec): BaselineOwner | undefined {
+  return ownerFromActor(exec)
+}
+
+function classifyForTool(
+  owner: BaselineOwner | undefined,
+  absPath: string,
+  findings: readonly Finding[],
+  scope: DiagnosticScope,
+): Finding[] {
+  const delta = classifyFindings(owner, absPath, findings)
+  if (scope === 'introduced') return [...delta.introduced, ...delta.changed]
+  if (scope === 'preexisting') return delta.preexisting
+  return delta.current
+}
+
+function currentFindingsByFile(root: string, findings: readonly Finding[]): Map<string, Finding[]> {
+  const grouped = new Map<string, Finding[]>()
+  for (const finding of findings) {
+    const abs = path.resolve(root, finding.file)
+    const list = grouped.get(abs) ?? []
+    list.push(finding)
+    grouped.set(abs, list)
+  }
+  return grouped
 }
 
 export const tools = [
@@ -168,6 +220,12 @@ export const tools = [
         enum: ['error', 'warning', 'info'],
         description: 'Only return findings of this severity.',
       },
+      scope: {
+        type: 'string',
+        enum: ['all', 'introduced', 'preexisting'],
+        description:
+          'Filter by regression scope. `all` (default) includes scope labels; `introduced` also includes changed regressions; `preexisting` shows baseline debt only.',
+      },
       max: {
         type: 'number',
         description: 'Max findings to return (default from maxFindings config, 50).',
@@ -182,7 +240,14 @@ export const tools = [
       render: (_args, value: JsonValue[]): TextBlock[] => renderFindingValue(value),
     },
     async execute(
-      args: { file_path?: string; file?: string; severity?: Severity; max?: number; repoRoot?: string },
+      args: {
+        file_path?: string
+        file?: string
+        severity?: Severity
+        scope?: DiagnosticScope
+        max?: number
+        repoRoot?: string
+      },
       exec: ToolRunExec,
     ): Promise<JsonValue[]> {
       try {
@@ -190,13 +255,35 @@ export const tools = [
         const root = await resolveRoot(args.repoRoot, exec)
         const manager = managerForRoot(root)
         const max = resolveMax(args.max)
+        const owner = ownerForExec(exec)
+        const scope = args.scope ?? 'all'
         let findings: Finding[]
         if (target) {
           const abs = await resolveFile(root, target)
-          findings = sortFindings(filterFindings(await manager.lintFile(abs), args.severity))
+          if (!hasBaseline(owner, abs)) {
+            // A direct tool call may predate the modern intent hook. Reuse a
+            // known manager snapshot when available; otherwise stay
+            // conservative and label the first observation pre-existing
+            // rather than claiming it was introduced by this turn.
+            const previous = manager.findingsFor(abs)
+            if (previous.length > 0) ensureBaseline(owner, abs, previous)
+          }
+          const current = await manager.lintFile(abs)
+          findings = hasBaseline(owner, abs)
+            ? classifyForTool(owner, abs, current, scope)
+            : scope === 'introduced'
+              ? []
+              : classifyWithoutBaseline(current)
+          findings = filterFindings(findings, args.severity)
         } else {
-          findings = sortFindings(filterFindings(manager.allFindings(), args.severity))
+          const grouped = currentFindingsByFile(root, manager.allFindings())
+          findings = [...grouped].flatMap(([abs, current]) => {
+            if (!hasBaseline(owner, abs)) return classifyWithoutBaseline(current)
+            return classifyForTool(owner, abs, current, scope)
+          })
+          findings = filterFindings(findings, args.severity)
         }
+        findings = sortFindings(findings)
         const capped = capFindings(findings, max)
         return toCanonical(capped.result, capped.dropped)
       } catch (error) {
@@ -229,7 +316,14 @@ export const tools = [
         const root = await resolveRoot(args.repoRoot, exec)
         const manager = managerForRoot(root)
         const max = resolveMax(args.max)
-        const errors = manager.allFindings().filter((finding) => finding.severity === 'error')
+        const owner = ownerForExec(exec)
+        const grouped = currentFindingsByFile(root, manager.allFindings())
+        const errors = [...grouped].flatMap(([abs, current]) => {
+          const scoped = hasBaseline(owner, abs)
+            ? classifyForTool(owner, abs, current, 'all')
+            : classifyWithoutBaseline(current)
+          return scoped.filter((finding) => finding.severity === 'error')
+        })
         const capped = capFindings(sortFindings(errors), max)
         return toCanonical(capped.result, capped.dropped)
       } catch (error) {
@@ -280,13 +374,38 @@ export const tools = [
         const root = await resolveRoot(args.repoRoot, exec)
         const abs = await resolveFile(root, target)
         const manager: LintManager = managerForRoot(root)
+        const owner = ownerForExec(exec)
+        let beforeFix: Finding[]
+        // A direct lint_fix call has no earlier lint result to use as a
+        // baseline. Establish one before the fixer runs; the post-fix lint is
+        // then compared to this snapshot, and the fixer cannot reset it.
+        if (!hasBaseline(owner, abs)) {
+          beforeFix = await manager.lintFile(abs)
+          ensureBaseline(owner, abs, beforeFix, true)
+        } else {
+          // The manager store may still contain the pre-edit baseline. Refresh
+          // once so resolved/changed statuses describe the actual file that
+          // lint_fix is about to rewrite.
+          beforeFix = await manager.lintFile(abs)
+        }
         const result = await manager.fixFile(abs)
+        const delta = classifyFindings(owner, abs, result.remaining)
+        const fixDiff = matchFindings(beforeFix, result.remaining)
+        const resolved = fixDiff.unmatchedPrevious.map((index) => ({ ...beforeFix[index], scope: 'resolved' as const }))
         // lint_fix rewrites via the linter process, which bypasses the fs tool
         // and its fs/observed event — re-arm the gate so the post-fix state is
         // re-checked at the turn boundary.
-        markDirty(abs)
-        const capped = capFindings(result.remaining, resolveMax(args.max))
-        return fixResultToCanonical({ ...result, remaining: capped.result, dropped: capped.dropped })
+        markDirty(abs, owner)
+        const capped = capFindings(delta.current, resolveMax(args.max))
+        const canonical = fixResultToCanonical({ ...result, remaining: capped.result, dropped: capped.dropped })
+        canonical.resolved = resolved.map(publicFinding)
+        canonical.baseline = {
+          introduced: delta.introduced.length,
+          changed: delta.changed.length,
+          preexisting: delta.preexisting.length,
+          resolved: resolved.length,
+        }
+        return canonical
       } catch (error) {
         return { error: friendlyMessage(error) }
       }

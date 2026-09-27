@@ -268,12 +268,7 @@ export async function parseGolangciJson(
   root: string,
   baseDir: string = root,
 ): Promise<Finding[]> {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(stdout)
-  } catch (error) {
-    throw new ParseError('golangci', (error as Error).message)
-  }
+  const parsed = parseJsonDocument(stdout, 'golangci')
   const issues = Array.isArray(parsed)
     ? (parsed as GolangciIssue[])
     : (parsed as GolangciReport | null)?.Issues
@@ -303,6 +298,49 @@ export async function parseGolangciJson(
     })
   }
   return findings
+}
+
+/**
+ * golangci-lint v2 writes the JSON report to stdout and then appends its
+ * human summary (`1 issues: ...`) to the same stream. Accept the first
+ * complete JSON value while retaining strict ParseError behavior for garbage.
+ */
+function parseJsonDocument(stdout: string, linter: LinterKey): unknown {
+  try {
+    return JSON.parse(stdout)
+  } catch (error) {
+    const start = stdout.search(/[\[{]/)
+    if (start >= 0) {
+      let depth = 0
+      let quote = false
+      let escaped = false
+      for (let index = start; index < stdout.length; index++) {
+        const char = stdout[index]
+        if (quote) {
+          if (escaped) escaped = false
+          else if (char === '\\') escaped = true
+          else if (char === '"') quote = false
+          continue
+        }
+        if (char === '"') {
+          quote = true
+          continue
+        }
+        if (char === '{' || char === '[') depth++
+        else if (char === '}' || char === ']') {
+          depth--
+          if (depth === 0) {
+            try {
+              return JSON.parse(stdout.slice(start, index + 1))
+            } catch {
+              break
+            }
+          }
+        }
+      }
+    }
+    throw new ParseError(linter, (error as Error).message)
+  }
 }
 
 // ---------------------------------------------------------------------------

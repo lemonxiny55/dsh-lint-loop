@@ -42,14 +42,25 @@ export {
 } from './detect.js'
 export {
   capFindings,
+  findingFingerprint,
   findingKey,
   filterFindings,
+  matchFindings,
+  normalizeMessage,
   renderFindings,
   sortFindings,
   type Finding,
+  type FindingScope,
   type Severity,
 } from './findings.js'
 export { clearFrameCache, frameFor, recordFileLines } from './frames.js'
+export {
+  baselineFor,
+  classifyFindings,
+  ensureBaseline,
+  type BaselineOwner,
+  type FindingDelta,
+} from './baseline.js'
 export { handleTurnStopping, markDirty, steeringCountFor, clearGateState, type TurnStoppingPayload } from './gate.js'
 export {
   LINTER_KEYS,
@@ -66,12 +77,14 @@ export { tools } from './tools.js'
 export { findRepoRoot } from './workspace.js'
 
 import { applyConfig, getConfig, type PluginConfig } from './config.js'
+import { ownerFromActor } from './baseline.js'
 import { invalidateProbes, isLinterConfigBasename } from './detect.js'
 import { clearFrameCache } from './frames.js'
 import { clearGateState, handleTurnStopping, markDirty, type TurnStoppingPayload } from './gate.js'
 import { disposeAllManagers } from './manager.js'
 import { createLintSection } from './section.js'
 import { tools } from './tools.js'
+import { finishObservedMutation, prepareMutation } from './regression.js'
 
 export const inject = ['tools', 'systemPrompt'] as const
 
@@ -104,23 +117,49 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
 
     const listenerNeeded = section !== null || gateEnabled
     if (listenerNeeded && typeof ctx.on === 'function') {
+      const onMutationIntent = (...args: unknown[]): unknown => {
+        const target = args[0] as { displayPath?: string } | undefined
+        const actor = args[1]
+        const next = args[2]
+        // Both intent waterfalls are observed pass-through hooks. Baseline
+        // capture happens before next() delegates to the harness policy; a
+        // failed/missing linter must never prevent the actual mutation.
+        return prepareMutation(target?.displayPath, actor)
+          .catch(() => undefined)
+          .then(() => typeof next === 'function' ? (next as () => unknown)() : undefined)
+      }
+      const offEdit = ctx.on('fs/edit-intent', onMutationIntent) as (() => void) | undefined
+      if (offEdit) disposers.push(offEdit)
+      const offWrite = ctx.on('fs/write-intent', onMutationIntent) as (() => void) | undefined
+      if (offWrite) disposers.push(offWrite)
+
       // fs/observed fires after read/read_image/write/edit commit — reads of
-      // unchanged files produce an empty delta, so subscribing to all of them
-      // is harmless and keeps the section's semantics simple.
+      // unchanged files are intentionally ignored in the modern lifecycle;
+      // legacy harnesses without an intent hook still use the old fallback.
       const off = ctx.on('fs/observed', (...args: unknown[]) => {
         const target = args[0] as { displayPath?: string } | undefined
-        const info = args[1] as { kind?: string } | undefined
-        if (info?.kind !== 'present') return
+        const observation = args[1] as { kind?: string } | undefined
+        const actor = args[2]
+        if (observation?.kind !== 'present') return
         const displayPath = target?.displayPath
-        if (process.env.DSH_LINT_DEBUG === '1') console.log('[dsh-lint-loop][debug] fs/observed', info?.kind, displayPath)
+        if (process.env.DSH_LINT_DEBUG === '1') console.log('[dsh-lint-loop][debug] fs/observed', observation?.kind, displayPath)
+        const observed = finishObservedMutation(target, actor)
+        // A target with an intent is a real write/edit. Undefined actor is the
+        // compatibility path used by pre-0.4 harnesses and unit integrations.
+        if (!observed?.mutation && actor !== undefined) return
+        const owner = observed?.owner ?? ownerFromActor(actor)
+        const observedPath = observed?.abs ?? displayPath
         // A linter config file just changed → the probe cache is stale.
         if (displayPath && isLinterConfigBasename(basenameOf(displayPath))) invalidateProbes()
-        section?.handleObserved(displayPath)
-        markDirty(displayPath)
+        section?.handleObserved(observedPath, owner)
+        markDirty(observedPath, owner)
       }) as (() => void) | undefined
       if (off) disposers.push(off)
 
-      if (gateEnabled) {
+      // Even with gate:false, auto-injection needs the turn boundary to drop
+      // the old baseline; otherwise a historical finding could be carried
+      // into a later turn and be mistaken for pre-existing forever.
+      if (gateEnabled || section !== null) {
         const offTurn = ctx.on('agent/turn-stopping', (...args: unknown[]) => {
           const payload = args[0] as TurnStoppingPayload | undefined
           // The seam is an awaited serial checkpoint: return the promise so the
@@ -130,10 +169,16 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
         }) as (() => void) | undefined
         if (offTurn) {
           disposers.push(offTurn)
-          console.log('[dsh-lint-loop] completion gate armed (agent/turn-stopping)')
+          console.log(
+            gateEnabled
+              ? '[dsh-lint-loop] completion gate armed (agent/turn-stopping)'
+              : '[dsh-lint-loop] baseline lifecycle armed (agent/turn-stopping)',
+          )
         } else {
           console.log(
-            '[dsh-lint-loop] agent/turn-stopping unavailable — completion gate disabled (tools and section still work)',
+            gateEnabled
+              ? '[dsh-lint-loop] agent/turn-stopping unavailable — completion gate disabled (tools and section still work)'
+              : '[dsh-lint-loop] agent/turn-stopping unavailable — baseline cleanup deferred until plugin unload',
           )
         }
       }

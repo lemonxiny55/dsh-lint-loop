@@ -10,7 +10,7 @@ import { fakeLinterPath, makeFixtureRepo, type FixtureRepo } from './helpers/fix
 const FAKE = fakeLinterPath()
 const PLUGIN_CONFIG = { linterPath: { eslint: FAKE, biome: FAKE, ruff: FAKE } }
 
-type Listener = (target: unknown, info: unknown, exec: unknown) => void
+type Listener = (target: unknown, info: unknown, exec: unknown) => unknown
 
 interface Mounted {
   registered: string[]
@@ -112,16 +112,16 @@ describe('plugin lifecycle', () => {
     expect(first.registered).toEqual(['lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     expect(first.sectionName).toBe('lint:findings')
     expect(first.sectionOrder).toBe(75)
-    expect(first.listenerNames).toEqual(['fs/observed', 'agent/turn-stopping'])
+    expect(first.listenerNames).toEqual(['fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(first.sectionText()).toContain('lint_diagnostics')
 
     first.dispose()
-    expect(first.disposed()).toEqual({ tools: 3, sections: 1, listeners: 2 })
+    expect(first.disposed()).toEqual({ tools: 3, sections: 1, listeners: 4 })
 
     const second = mount(PLUGIN_CONFIG)
     expect(second.registered).toEqual(['lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     second.dispose()
-    expect(second.disposed()).toEqual({ tools: 3, sections: 1, listeners: 2 })
+    expect(second.disposed()).toEqual({ tools: 3, sections: 1, listeners: 4 })
   })
 
   it('injects a findings delta after an fs/observed edit event (the closed loop)', async () => {
@@ -153,6 +153,35 @@ describe('plugin lifecycle', () => {
       { timeout: 10_000, interval: 100 },
     )
 
+    mounted.dispose()
+  })
+
+  it('captures the pre-edit baseline through the intent waterfall and passes through next()', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const repo: FixtureRepo = await makeFixtureRepo()
+    await repo.write('eslint.config.mjs', 'export default []\n')
+    const file = await repo.write('src/intent.ts', 'const old = 1 // lint: error old-rule historical debt\n')
+    const mounted = mount(PLUGIN_CONFIG)
+    const intent = mounted.listenersFor('fs/edit-intent')[0]
+    const observed = mounted.listenersFor('fs/observed')[0]
+    const session = { header: { cwd: repo.root } }
+    const actor = { session }
+    const next = vi.fn(() => 'delegated')
+
+    const result = intent({ displayPath: 'src/intent.ts' }, actor, next) as Promise<unknown>
+    await expect(result).resolves.toBe('delegated')
+    expect(next).toHaveBeenCalledTimes(1)
+
+    await repo.write(
+      'src/intent.ts',
+      'const old = 1 // lint: error old-rule historical debt\nconst fresh = 2 // lint: error fresh-rule this edit introduced\n',
+    )
+    observed({ displayPath: 'src/intent.ts' }, { kind: 'present' }, actor)
+    await vi.waitFor(() => {
+      const text = mounted.sectionText()
+      expect(text).toContain('fresh-rule')
+      expect(text).not.toContain('old-rule')
+    }, { timeout: 10_000, interval: 100 })
     mounted.dispose()
   })
 
@@ -251,7 +280,7 @@ describe('completion gate wiring', () => {
   it('arms the gate without a section when autoInject is false but gate is explicit', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false, gate: true })
-    expect(mounted.listenerNames).toEqual(['fs/observed', 'agent/turn-stopping'])
+    expect(mounted.listenerNames).toEqual(['fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(() => mounted.sectionText()).toThrow('section was not registered')
     mounted.dispose()
   })

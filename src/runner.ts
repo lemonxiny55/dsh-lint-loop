@@ -4,6 +4,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import path from 'node:path'
 
 export interface RunOutcome {
   exitCode: number | null
@@ -24,10 +25,11 @@ export function runProcess(
   options: { cwd?: string; timeoutMs: number },
 ): Promise<RunOutcome> {
   return new Promise((resolve) => {
+    const shell = process.platform === 'win32' && needsWindowsShell(command)
     const child = spawn(command, args, {
       cwd: options.cwd,
       // npm global shims on Windows are .cmd files — shell keeps them resolvable.
-      shell: process.platform === 'win32',
+      shell,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 
@@ -68,8 +70,25 @@ export function runProcess(
       // A failed spawn never produces a process.
       finish({ code: (error as NodeJS.ErrnoException).code, message: error.message })
     })
-    child.once('close', () => finish())
+    child.once('close', () => {
+      // Windows shell mode reports a missing executable through cmd.exe's
+      // stderr instead of spawn('error'). Normalize it to the same outcome
+      // as a direct ENOENT so tools can return the install hint.
+      const shellMissing = process.platform === 'win32'
+        && child.exitCode !== 0
+        && stdout.trim() === ''
+        && /is not recognized|cannot find the path specified|command not found|not found/i.test(stderr)
+      finish(shellMissing ? { code: 'ENOENT', message: stderr.trim() } : undefined)
+    })
   })
+}
+
+function needsWindowsShell(command: string): boolean {
+  if (process.platform !== 'win32') return false
+  if (/\.cmd$/i.test(command)) return true
+  // Absolute .exe/node overrides must bypass cmd.exe; shell concatenation can
+  // corrupt quoted `-e` arguments and hides direct ENOENT diagnostics.
+  return !path.isAbsolute(command)
 }
 
 /** True when the process never started (binary missing) or the shell says so. */
@@ -83,7 +102,7 @@ export function isMissingBinary(outcome: RunOutcome): boolean {
   return (
     outcome.exitCode !== 0 &&
     outcome.stdout.trim() === '' &&
-    /is not recognized|command not found|not found/i.test(outcome.stderr)
+    /is not recognized|cannot find the path specified|command not found|not found/i.test(outcome.stderr)
   )
 }
 

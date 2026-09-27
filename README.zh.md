@@ -14,15 +14,15 @@
 
 | 工具 | 用途 |
 |---|---|
-| `lint_diagnostics` | 单文件(或所有已见文件)的 lint 发现:规则、`file:line:col`、消息、`fixable` 布尔;支持 severity 过滤与 `max` 截断。参数 `file_path`(别名 `file`)。**编辑完文件立刻调用。** |
-| `lint_workspace_errors` | 本会话已 lint 文件的全部 error——"现在什么坏了"总览。 |
-| `lint_fix` | **杀手锏** —— 对单文件跑仓库自己的自动修复(`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`),然后复检,返回变更行数摘要(+增/-删)、剩余发现、所用 linter。参数 `file_path`(别名 `file`)。只在工作区根内操作。 |
+| `lint_diagnostics` | 单文件(或所有已见文件)的 lint 发现:规则、`file:line:col`、消息、`scope`(`preexisting` / `introduced` / `changed`)与 `fixable`;支持 severity、回归 scope 与 `max` 截断。参数 `file_path`(别名 `file`)。**编辑完文件立刻调用。** |
+| `lint_workspace_errors` | 本会话当前 error 总览,每条带 `scope`,可区分历史债务和本轮回归。 |
+| `lint_fix` | **杀手锏** —— 对单文件跑仓库自己的自动修复(`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`),然后复检,返回变更行数摘要(+增/-删)、剩余与已解决发现、baseline 摘要和所用 linter。参数 `file_path`(别名 `file`)。只在工作区根内操作。 |
 
 外加一个可选的**自动注入 system prompt section**(`lint:findings`,order 75——紧跟 `lsp:diagnostics` 之后):模型通过 harness 写/改文件后,插件订阅 `fs/observed` 事件,用自己的串行池 lint 该文件,只注入这次编辑**新增/变化**的发现——**默认只注入 error**(`sectionSeverity` 可调),最多 top 5 行,绝不灌全仓库。过期增量自动失效(`sectionTtlMs`,默认 30s)。渲染的发现带**源码代码帧**(问题行用 `█` 标出,附一行上下文),模型无需回读文件即可修改。而**完成门禁**(见下)会阻止"文件里还有错误却收工"。
 
-## 完成门禁(0.2)
+## 完成门禁(0.4)
 
-"编辑 → lint → 修复"只有真正改完才算闭环。在 harness 的 `agent/turn-stopping` 接缝——回合关闭**之前**的串行检查点——插件检查本轮编辑过的文件;若仍有 error,就**steer 模型再走一步**(附上精确发现),而不是让它收工:
+"编辑 → lint → 修复"只有真正改完才算闭环。harness 委托 edit/write 之前,插件先记录该文件的 lint baseline。在 `agent/turn-stopping` 接缝——回合关闭**之前**的串行检查点——插件检查本轮编辑过的文件;若仍有**新增或变化**的 error,就**steer 模型再走一步**(附上精确发现),而不是让它收工。编辑前已经存在的错误仍会显示,但不会阻塞本轮:
 
 ```
 lint: this turn cannot finish cleanly — 2 errors remain in file you edited.
@@ -36,7 +36,7 @@ src/a.ts:7:5   error  eqeqeq          Expected '===' and instead saw '=='.
 
 - 每个文件每次收尾只评估**一次**(重新编辑会重新触发,但不会卡在同一批旧发现上死循环);
 - 每轮最多强制 **`gateMaxSteers` 次续跑**(默认 `2`),之后放行;
-- 只考虑**本轮模型自己碰过的文件**——未触及文件里的历史错误不会阻塞;
+- 只考虑**本轮模型自己碰过的文件**——这些文件的历史错误和未触及文件里的错误都不会阻塞;
 - `gate: false` 彻底关闭;`autoInject: false` 时除非显式 `gate: true` 否则也关闭。
 
 门禁不是硬否决,只是有界的一脚——因此永远不会卡死会话。
@@ -47,7 +47,7 @@ src/a.ts:7:5   error  eqeqeq          Expected '===' and instead saw '=='.
 模型编辑文件  ──►  dsh 写入(fs 工具)
                     │
                     ▼ fs/observed 事件
-        插件用仓库自己的 linter lint 该文件
+        插件先记录编辑前 baseline,再用仓库自己的 linter lint 该文件
                     │
                     ▼ 只推新增/变化的发现(默认 error)
         delta 注入 prompt(或按需调 lint_diagnostics)
@@ -88,7 +88,7 @@ src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
 src/store.ts:8:5      warn   semi            missing semicolon  [fixable]
 ```
 
-`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter);上面这张紧凑表格 + 代码帧是渲染视图。`file_path` 与 harness 原生 fs 工具一致,`file` 别名同样可用。修复:
+`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter 和 `scope`);上面这张紧凑表格 + 代码帧是渲染视图。`lint_diagnostics` 保持原有调用方式,另支持可选 `scope: "all" | "introduced" | "preexisting"`;默认是 `all`。`file_path` 与 harness 原生 fs 工具一致,`file` 别名同样可用。修复:
 
 ```
 lint_fix { file_path: "src/store.ts" }
@@ -143,8 +143,8 @@ linter 缺失?工具会给出确切安装命令:`linter "eslint" is not installe
 |---|---|---|
 | `autoInject` | `true` | 注册自动注入的发现 section(及 `fs/observed` 监听) |
 | `maxFindings` | `50` | 工具输出与注入 section 的发现硬上限(token 成本护栏) |
-| `linters` | `[]`(自动) | 强制可用的 linter 集合(`eslint` / `biome` / `ruff`);未知键告警 |
-| `linterPath` | `{}` | 按 linter 的二进制覆盖(`{eslint: …, biome: …, ruff: …}`);`.js/.mjs/.cjs` 结尾的路径用当前 Node 直跑 |
+| `linters` | `[]`(自动) | 强制可用的 linter 集合(`eslint` / `biome` / `ruff` / `golangci` / `clippy`);未知键告警 |
+| `linterPath` | `{}` | 按 linter 的二进制覆盖(`{eslint: …, biome: …, ruff: …, golangci: …, clippy: …}`);`.js/.mjs/.cjs` 结尾的路径用当前 Node 直跑 |
 | `sectionTtlMs` | `30000` | 注入 delta 的保鲜时长(最小 1000) |
 | `sectionSeverity` | `error` | 注入 section 报告的严重级别(`error`/`warning`/`info`)——默认把 warning 挡在 prompt 外 |
 | `settleMs` | `600` | 最后一次编辑后重新 lint 的静默期(最小 100) |
@@ -171,9 +171,10 @@ linter 缺失?工具会给出确切安装命令:`linter "eslint" is not installe
 - **探测**(`src/detect.ts`):按 repo root 探测配置文件,带缓存;观察事件携带 linter 配置文件名(`biome.json`、`pyproject.toml`、…)时失效重探。`pyproject.toml` 只有真的含 `[tool.ruff]` 才算 ruff。
 - **Runner 池**(`src/runner.ts`):每 (root, linter) 一条串行车道——保存风暴只会排队,不会并发开 N 个 linter;每次运行一次性 spawn,stdout/stderr 封顶,`timeoutMs` 到点杀掉(SIGTERM → SIGKILL 宽限)。
 - **发现存储**(`src/manager.ts`):每 root 一个 manager,保存每文件最近一次 lint 结果(512 文件软上限);`lint_fix` 修复前后各读一次文件,汇总行级 diff,再复检拿到权威的剩余集合。包级运行的结果会**分发**——发现落到各自上报的文件下,`lint_diagnostics { file }` 仍然只回答该文件。
-- **编辑检测**(`src/section.ts`):`fs/observed` 监听只入队文件(同步、绝不抛异常);`settleMs` 防抖刷新后 lint 并与该文件的先前状态做差——只有配置级别的新增/变化发现进入 prompt,最多 top 5。
+- **回归 baseline**(`src/baseline.ts`、`src/regression.ts`):`fs/edit-intent` / `fs/write-intent` 在实际 mutation 前记录每个 session/file 的第一份 findings。匹配综合 linter、rule、severity、标准化 message、源码行与有界位置距离,处理前置插行、重复 rule/message、同一 turn 多次编辑和 package-scoped 结果。即使关闭 gate,baseline 也会保留到 turn boundary 后清理。
+- **编辑检测**(`src/section.ts`):`fs/observed` 监听只入队文件(同步、绝不抛异常);`settleMs` 防抖刷新后与回归 baseline 比较——只有配置级别的新增/变化发现进入 prompt,最多 top 5。
 - **代码帧**(`src/frames.ts`):lint 运行时缓存源码行,为前 `frameLimit` 条渲染的发现附上问题行标记 `█` 的上下文;渲染路径保持同步,缓存冷时(回放)优雅降级为不带帧。
-- **完成门禁**(`src/gate.ts`):本轮观察到的文件在 `agent/turn-stopping` 时重新 lint;残留 error 触发有界的 `agent.steer`(每轮 ≤ `gateMaxSteers`),随附发现。
+- **完成门禁**(`src/gate.ts`):本轮观察到的文件在 `agent/turn-stopping` 时重新 lint;未解决的新增/变化 error 才触发有界的 `agent.steer`(每轮 ≤ `gateMaxSteers`),随附发现。历史发现仍可通过 diagnostics 查看,但不算 gate error。
 - **工作区解析**:会话 cwd → 向上找最近 `.git`(有界),与 dsh-code-index 一致;仓库外的文件一律拒绝。
 - **Token 成本意识**:每个面——工具输出与注入 section——都受 `maxFindings` 约束(section 为 top 5);注入的是单次编辑的 delta,不是全仓库。
 
@@ -187,6 +188,8 @@ linter 缺失?工具会给出确切安装命令:`linter "eslint" is not installe
 - Biome 的 JSON reporter 不暴露可修复性——biome 发现的 `fixable` 恒为 `false`,但 `lint_fix` 仍会跑 `biome check --write` 并如实报告改动。
 - Ruff 没有严重级别——所有 ruff 发现都以 `error` 呈现。
 - 包级 linter(`golangci-lint`、`cargo clippy`)分析的是包/crate 而非单文件:一次运行覆盖该包里所有被改文件,发现归到各自文件,只对传给 `lint_fix` 的那个文件做 diff。`cargo clippy` 先做 crate 类型检查,首次运行可能远超 120s 下限。
+- 删除/rename 观测:当前 DSH 的 `fs/observed` 合约可靠提供 present 结果,但没有稳定的旧路径/新路径 rename 事件可供插件使用。因此删除或 rename 不会被 eager 迁移 regression state;下一次 lint/tool 调用会重新解析路径,manager 生命周期会限制残留状态。
+- baseline identity 采取保守策略:优先用源码行,对没有可读源码的 linter 才使用有界的位置近似。如果 rule/message 与源码上下文同时发生且无法消歧,结果可能标为 introduced 而不是 changed。
 - 自动注入由 harness 文件事件触发;用户在带外直接改文件(不经 harness)不会被观察到,直到下次调用工具。
 - linter 需已安装(先解析仓库本地 `node_modules/.bin`,再 `PATH`,再 `linterPath`);刻意不捆绑。
 - 完成门禁是有界 nudge 而非硬阻断:每轮最多强制 `gateMaxSteers` 次续跑后放行,不会卡死会话。

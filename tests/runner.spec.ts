@@ -66,6 +66,6 @@ describe('runProcess', () => {
   it('resolves cwd relative to the workspace root', async () => {
     const cwd = fileURLToPath(new URL('.', import.meta.url))
     const outcome = await runProcess(NODE, ['-e', 'console.log(process.cwd())'], { cwd, timeoutMs: 5_000 })
-    expect(outcome.stdout.trim()).toBe(cwd.replace(/\/$/, ''))
+    expect(outcome.stdout.trim()).toBe(cwd.replace(/[\\/]+$/, ''))
   })
 })

@@ -95,6 +95,11 @@ export class LintManager {
     this.store.clear()
   }
 
+  /** Forget one file after a reliable absent observation (delete/create lifecycle). */
+  forgetFile(absPath: string): void {
+    this.store.delete(this.key(absPath))
+  }
+
   private async requireLinter(absPath: string): Promise<LinterKey> {
     const ext = extOf(absPath)
     if (!linterFamilyForExt(ext)) throw new UnsupportedFileError(ext)
@@ -202,7 +207,28 @@ export class LintManager {
     const spec = LINTER_SPECS[linter]
     const outcome = await this.runWithFlagFallback(linter, spec.lintArgs, target)
     this.assertRunnable(linter, outcome)
-    return parseFindingsFor(linter, outcome.stdout, this.root, target.baseDir)
+    const findings = await parseFindingsFor(linter, outcome.stdout, this.root, target.baseDir)
+    return this.attachSourceContext(findings)
+  }
+
+  /**
+   * Keep a small source fingerprint beside stored findings. Linter line/column
+   * values move when code is inserted above an old diagnostic; the source line
+   * lets the regression matcher follow that diagnostic without treating it as
+   * a new error. The field is internal and is omitted from tool JSON.
+   */
+  private async attachSourceContext(findings: readonly Finding[]): Promise<Finding[]> {
+    const contents = new Map<string, string | null>()
+    const result: Finding[] = []
+    for (const finding of findings) {
+      let content = contents.get(finding.file)
+      if (content === undefined) {
+        content = await readFile(path.resolve(this.root, finding.file), 'utf8').catch(() => null)
+        contents.set(finding.file, content)
+      }
+      result.push({ ...finding, context: sourceContext(content, finding.line) })
+    }
+    return result
   }
 
   /**
@@ -435,4 +461,10 @@ export async function disposeAllManagers(): Promise<void> {
     manager.dispose()
   }
   managers.clear()
+}
+
+function sourceContext(content: string | null, line: number): string | undefined {
+  if (content === null || line < 1) return undefined
+  const lines = content.split('\n')
+  return lines[line - 1]?.trim().replace(/\s+/g, ' ')
 }

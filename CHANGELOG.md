@@ -2,6 +2,40 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## 0.4.0 — 2026-09-19
+
+Regression-aware lint loop: an edit is evaluated against the findings that
+existed immediately before that edit, so historical lint debt no longer blocks
+an otherwise clean turn.
+
+- **feat(baseline):** capture per-session baselines through DSH's
+  `fs/edit-intent` / `fs/write-intent` waterfalls before the mutation delegates
+  to the harness policy; preserve the first baseline across repeated edits in
+  one turn and re-arm it after a completed turn.
+- **feat(matching):** add position-independent finding fingerprints using
+  linter, rule, severity, normalized message, source line, and bounded
+  approximate location. Existing `findingKey` remains compatible; inserted
+  lines no longer make every historical finding look new, and duplicate
+  rule/message occurrences are matched one-to-one.
+- **feat(gate):** completion steering now considers only unresolved introduced
+  or changed errors. Pre-existing errors remain visible but do not block the
+  turn; `gateMaxSteers` remains the loop guard.
+- **feat(tools):** `lint_diagnostics` accepts an optional compatible
+  `scope: all | introduced | preexisting` filter and returns a `scope` label;
+  `lint_workspace_errors` labels current errors; `lint_fix` re-lints before
+  and after fixing, keeps the baseline intact, and reports resolved findings.
+- **feat(section):** `lint:findings` prioritizes introduced/changed findings,
+  suppresses historical debt, and de-duplicates repeated observations using
+  the same robust matcher.
+- **feat(lifecycle):** modern DSH intent hooks are pass-through observers;
+  legacy `fs/observed` integrations retain a compatibility fallback. Windows
+  direct executable spawning now preserves stdout and ENOENT install hints.
+- **test/docs:** 121 tests cover baseline capture, line drift, duplicate
+  findings, repeated edits, new files, intent-hook pass-through, gate
+  re-steer/fix, tool scopes, fixer re-lint, current golangci JSON summaries,
+  and package-scoped batch distribution. Release evidence records current DSH
+  smoke results and known filesystem limits.
+
 ## 0.3.0 — 2026-09-14
 
 - **feat(detect):** Go (`golangci-lint`) is detected via any `.golangci.yml` / `.golangci.yaml` / `.golangci.toml` / `.golangci.json`; Rust (`cargo clippy`) via a `Cargo.toml` (clippy ships with the toolchain). `.go` routes to golangci-lint, `.rs` to clippy; config-basename changes re-probe as before.

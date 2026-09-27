@@ -248,6 +248,12 @@ describe('parseGolangciJson', () => {
     await expect(parseGolangciJson('nope {', ROOT)).rejects.toThrow(ParseError)
   })
 
+  it('accepts the v2 JSON report followed by its human summary', async () => {
+    const stdout = `${JSON.stringify({ Issues: [{ FromLinter: 'errcheck', Text: 'unchecked', Pos: { Filename: '/repo/a.go', Line: 4, Column: 2 } }] })}\n1 issues:\n* errcheck: 1\n`
+    const findings = await parseGolangciJson(stdout, ROOT)
+    expect(findings[0]).toMatchObject({ rule: 'errcheck', file: 'a.go', line: 4, severity: 'error' })
+  })
+
   it('resolves a relative reported path against the base directory', async () => {
     const stdout = JSON.stringify({ Issues: [{ FromLinter: 'govet', Pos: { Filename: 'pkg/a.go', Line: 2, Column: 1 } }] })
     const findings = await parseGolangciJson(stdout, '/repo', '/repo')

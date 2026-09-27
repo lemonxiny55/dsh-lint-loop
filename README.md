@@ -14,15 +14,15 @@ Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deeps
 
 | Tool | Purpose |
 |---|---|
-| `lint_diagnostics` | Lint findings for one file (or all files the linters have seen), with rule, `file:line:col`, message, and a `fixable` flag; severity filter and `max` cap. Takes `file_path` (alias `file`). **Call right after editing a file.** |
-| `lint_workspace_errors` | All errors across files linted this session — the "what is broken right now" view. |
-| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, and the linter used. Takes `file_path` (alias `file`). Workspace-root files only. |
+| `lint_diagnostics` | Lint findings for one file (or all files the linters have seen), with rule, `file:line:col`, message, `scope` (`preexisting` / `introduced` / `changed`), and a `fixable` flag; severity, regression-scope, and `max` filters. Takes `file_path` (alias `file`). **Call right after editing a file.** |
+| `lint_workspace_errors` | All current errors across files linted this session — including a `scope` label so historical debt is distinguishable from this turn's regressions. |
+| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, resolved findings, a baseline summary, and the linter used. Takes `file_path` (alias `file`). Workspace-root files only. |
 
 Plus an optional **auto-injected system prompt section** (`lint:findings`, order 75 — right after `lsp:diagnostics`): after the model writes/edits a file through the harness, the plugin subscribes to the `fs/observed` event, lints the file through its serial pool, and injects only the **new/changed findings introduced by that edit** — **errors only by default** (set `sectionSeverity` for more), top 5 lines, never the whole workspace. Stale deltas expire (`sectionTtlMs`, default 30s). Rendered findings carry a **source code frame** (the offending line marked `█`, plus a line of context) so the model fixes without re-reading the file. And the **completion gate** (below) stops the turn from closing while edited files still have errors.
 
-## The completion gate (0.2)
+## The completion gate (0.4)
 
-Edit → lint → fix is only closed if the model actually fixes what it broke. On the harness `agent/turn-stopping` seam — a serial checkpoint *before* the turn closes — the plugin checks the files edited during this turn. If any still carry errors, it **steers the agent for another step** with the exact findings, instead of letting it finish:
+Edit → lint → fix is only closed if the model actually fixes what it broke. Before a harness edit/write is delegated, the plugin captures that file's lint baseline. At the `agent/turn-stopping` seam — a serial checkpoint *before* the turn closes — it checks the files edited during this turn. If any **introduced or changed** errors remain, it **steers the agent for another step** with the exact findings, instead of letting it finish. Errors that were already present before the edit remain visible but do not block the turn:
 
 ```
 lint: this turn cannot finish cleanly — 2 errors remain in file you edited.
@@ -36,7 +36,7 @@ It is deliberately **self-limiting** — the first-party Claude Code bridge has 
 
 - each file is evaluated **once per stopping** (re-editing re-arms it, finishing does not loop on a stale set);
 - each turn forces at most **`gateMaxSteers` continuations** (default `2`), then admits the turn;
-- only files **the model itself touched this turn** are considered — pre-existing errors in untouched files never block;
+- only files **the model itself touched this turn** are considered — pre-existing errors in those files, and errors in untouched files, never block;
 - `gate: false` disables it entirely; `autoInject: false` also disables it unless `gate: true` is set explicitly.
 
 Nothing about the gate is a hard veto — it is a bounded nudge, so it can never wedge a session.
@@ -47,9 +47,9 @@ Nothing about the gate is a hard veto — it is a bounded nudge, so it can never
 model edits file  ──►  dsh writes it (fs tool)
                         │
                         ▼ fs/observed event
-        plugin lints the file with the repo's own linter
+        plugin captures the pre-edit baseline, then lints the file
                         │
-                        ▼ new/changed findings only (errors by default)
+                        ▼ introduced/changed findings only (errors by default)
         delta injected into the prompt (or lint_diagnostics on demand)
                         │
                         ▼
@@ -88,7 +88,7 @@ src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
 src/store.ts:8:5      warn   semi            missing semicolon  [fixable]
 ```
 
-The canonical JSON (rule, file, line, col, severity, message, fixable, linter) is what `execute` returns; the compact table + code frame above is the rendered view. `file_path` matches the harness's native fs tools; the `file` alias works too. And the fix:
+The canonical JSON (rule, file, line, col, severity, message, fixable, linter, and `scope`) is what `execute` returns; the compact table + code frame above is the rendered view. `lint_diagnostics` keeps its old call shape and accepts optional `scope: "all" | "introduced" | "preexisting"`; `all` is the default. `file_path` matches the harness's native fs tools; the `file` alias works too. And the fix:
 
 ```
 lint_fix { file_path: "src/store.ts" }
@@ -143,8 +143,8 @@ Options are passed as the plugin row's `config` in the profile patch (or default
 |---|---|---|
 | `autoInject` | `true` | Register the auto-injected findings section (and the `fs/observed` listener) |
 | `maxFindings` | `50` | Hard cap on findings surfaced by tools and the injected section (token-cost guard) |
-| `linters` | `[]` (auto) | Force which linters are usable (`eslint` / `biome` / `ruff`); unknown keys are warned |
-| `linterPath` | `{}` | Per-linter binary override (`{eslint: …, biome: …, ruff: …}`); a path ending in `.js/.mjs/.cjs` runs under the current Node |
+| `linters` | `[]` (auto) | Force which linters are usable (`eslint` / `biome` / `ruff` / `golangci` / `clippy`); unknown keys are warned |
+| `linterPath` | `{}` | Per-linter binary override (`{eslint: …, biome: …, ruff: …, golangci: …, clippy: …}`); a path ending in `.js/.mjs/.cjs` runs under the current Node |
 | `sectionTtlMs` | `30000` | How long an injected delta stays current (min 1000) |
 | `sectionSeverity` | `error` | Severity the injected section reports (`error` / `warning` / `info`) — warnings stay out of the prompt by default |
 | `settleMs` | `600` | Quiet period after the last edit before the section re-lints (min 100) |
@@ -171,9 +171,10 @@ Options are passed as the plugin row's `config` in the profile patch (or default
 - **Detection** (`src/detect.ts`): config-file probe per repo root, cached, invalidated when an observed event carries a linter config basename (`biome.json`, `pyproject.toml`, …). `pyproject.toml` counts as ruff only when it really contains `[tool.ruff]`.
 - **Runner pool** (`src/runner.ts`): one serial lane per (root, linter) — a save storm queues instead of stampeding; each run is a one-shot spawn with capped stdout/stderr, killed at `timeoutMs` (SIGTERM → SIGKILL grace).
 - **Findings store** (`src/manager.ts`): per-root manager keeps the last lint result per file (512-file soft cap); `lint_fix` reads the file before and after the fix run, summarizes the line diff, and re-lints for the authoritative remaining set. Package-scoped runs are distributed — findings land under the file each one reports, so `lint_diagnostics { file }` stays per-file.
-- **Edit detection** (`src/section.ts`): the `fs/observed` listener only queues the file (sync, never throws); a debounced (`settleMs`) refresh lints and diffs against the per-file previous state — only new/changed findings of the configured severity reach the prompt, capped to the top 5.
+- **Regression baseline** (`src/baseline.ts`, `src/regression.ts`): `fs/edit-intent` / `fs/write-intent` capture the first pre-mutation findings per session/file. Matching combines linter, rule, severity, normalized message, source line, and bounded location, so line insertion, duplicates, repeated edits, and package-scoped results remain stable. The baseline is retained until the turn boundary admits or gives up on the turn, even when the gate is disabled.
+- **Edit detection** (`src/section.ts`): the `fs/observed` listener only queues the file (sync, never throws); a debounced (`settleMs`) refresh lints against the regression baseline — only introduced/changed findings of the configured severity reach the prompt, capped to the top 5.
 - **Code frames** (`src/frames.ts`): source lines are cached during a lint run and attached to the first `frameLimit` rendered findings, with the offending line marked `█`; the render path stays synchronous and degrades to no frame when the cache is cold (replay).
-- **Completion gate** (`src/gate.ts`): files observed during the turn are re-linted at `agent/turn-stopping`; remaining errors trigger a bounded `agent.steer` (≤ `gateMaxSteers` per turn) that carries the findings.
+- **Completion gate** (`src/gate.ts`): files observed during the turn are re-linted at `agent/turn-stopping`; unresolved introduced/changed errors trigger a bounded `agent.steer` (≤ `gateMaxSteers` per turn) that carries the findings. Historical findings remain available through diagnostics but are not gate errors.
 - **Workspace resolution**: session cwd → walk up to the nearest `.git` (bounded), same as dsh-code-index. Files outside a repo are refused.
 - **Token-cost awareness**: every surface — tool output and injected section — is capped by `maxFindings` (section: top 5); the injected view is a per-edit delta, not the workspace.
 
@@ -187,6 +188,8 @@ The two plugins are **complementary and coexist**: `dsh-lsp-diagnostics` covers 
 - Biome's JSON reporter does not expose fixability — `fixable` is `false` for biome findings, but `lint_fix` still runs `biome check --write` and reports what actually changed.
 - Ruff has no severities — all ruff findings surface as `error`.
 - Package-scoped linters (`golangci-lint`, `cargo clippy`) analyze a package/crate, not a single file: one run covers all edited files in that package, findings are attributed to the file each one reports, and only the file passed to `lint_fix` is diffed. `cargo clippy` type-checks the crate, so its first run can far exceed the 120s floor.
+- Delete/rename observation: the current DSH `fs/observed` contract reliably reports presence, but does not expose a stable old-path/new-path rename event to plugins. Regression state is therefore not eagerly migrated for deletes or renames; the next lint/tool call re-resolves the path and stale entries are bounded by the manager lifecycle.
+- Baseline identity is deliberately conservative: source-line context is preferred, with approximate location only as a bounded fallback for linters that omit readable source. If a linter changes both its rule/message and source context in an ambiguous way, the result may be reported as introduced instead of changed.
 - Auto-injection triggers on harness file events; direct out-of-band edits (the user editing files externally) are not observed until the tool is called.
 - Linters must be installed (repo-local `node_modules/.bin` is resolved first, then `PATH`, then `linterPath`); nothing is bundled, by design.
 - The completion gate is a bounded nudge, not a hard block: it forces at most `gateMaxSteers` continuations per turn, then admits the turn — it can never wedge a session.
