@@ -1,10 +1,9 @@
 /**
  * Per-session regression baselines.
  *
- * A baseline is captured immediately before a harness fs mutation whenever
- * the current DSH lifecycle exposes the edit/write intent waterfall. The
- * state is keyed by the opaque session object (or a legacy/global fallback),
- * so two agents editing the same workspace do not exchange turn state.
+ * A baseline is captured immediately before a DSH edit/write tool dispatch.
+ * State uses the stable session ID when available, with the session object as
+ * a compatibility fallback, so cloned execution objects still share a turn.
  */
 
 import path from 'node:path'
@@ -27,6 +26,19 @@ interface BaselineEntry {
 
 const states = new Map<BaselineOwner, Map<string, BaselineEntry>>()
 const pendingMutations = new Map<BaselineOwner, Set<string>>()
+const editedThisTurn = new Map<BaselineOwner, Set<string>>()
+
+/** Share one owner key across cloned DSH execution objects for the same session. */
+function ownerFromSession(session: unknown): BaselineOwner | undefined {
+  if (!session || typeof session !== 'object') return undefined
+  const candidate = session as { id?: unknown; header?: { id?: unknown } }
+  const id = typeof candidate.id === 'string'
+    ? candidate.id
+    : typeof candidate.header?.id === 'string'
+      ? candidate.header.id
+      : undefined
+  return id ? `dsh-lint-loop:session:${id}` : session
+}
 
 /** Extract the stable opaque session identity carried by DSH tool executions. */
 export function ownerFromActor(actor: unknown): BaselineOwner | undefined {
@@ -34,16 +46,17 @@ export function ownerFromActor(actor: unknown): BaselineOwner | undefined {
   const candidate = actor as { agent?: { session?: object } | object; session?: object }
   if (candidate.agent && typeof candidate.agent === 'object') {
     const agent = candidate.agent as { session?: object }
-    return agent.session ?? candidate.agent
+    return ownerFromSession(agent.session) ?? candidate.agent
   }
-  return candidate.session ?? actor
+  return ownerFromSession(candidate.session) ?? actor
 }
 
 /** Extract the same owner from an agent/turn-stopping payload. */
 export function ownerFromAgent(agent: unknown): BaselineOwner | undefined {
   if (!agent || typeof agent !== 'object') return undefined
   const candidate = agent as { session?: object; id?: string }
-  return candidate.session ?? candidate.id ?? agent
+  return ownerFromSession(candidate.session)
+    ?? (candidate.id ? `dsh-lint-loop:agent:${candidate.id}` : agent)
 }
 
 function ownerKey(owner: BaselineOwner | undefined): BaselineOwner {
@@ -69,6 +82,19 @@ export function baselineFor(owner: BaselineOwner | undefined, absPath: string): 
 
 export function hasBaseline(owner: BaselineOwner | undefined, absPath: string): boolean {
   return states.get(ownerKey(owner))?.has(fileKey(absPath)) ?? false
+}
+
+/** Mark a file confirmed through a successful DSH edit/write in this turn. */
+export function markTurnEdited(owner: BaselineOwner | undefined, absPath: string): void {
+  const key = ownerKey(owner)
+  const files = editedThisTurn.get(key) ?? new Set<string>()
+  files.add(fileKey(absPath))
+  editedThisTurn.set(key, files)
+}
+
+/** Edited files are narrower than baseline files (tools may establish baselines too). */
+export function turnEditedFiles(owner: BaselineOwner | undefined): string[] {
+  return [...(editedThisTurn.get(ownerKey(owner)) ?? [])]
 }
 
 /** Capture once per owner/file; later edits in the same turn keep the original baseline. */
@@ -162,20 +188,25 @@ export function clearBaseline(owner: BaselineOwner | undefined, absPaths?: reado
   if (!absPaths) {
     states.delete(key)
     pendingMutations.delete(key)
+    editedThisTurn.delete(key)
     return
   }
   const pending = pendingMutations.get(key)
+  const edited = editedThisTurn.get(key)
   for (const absPath of absPaths) {
     state.delete(fileKey(absPath))
     pending?.delete(fileKey(absPath))
+    edited?.delete(fileKey(absPath))
   }
   if (pending?.size === 0) pendingMutations.delete(key)
+  if (edited?.size === 0) editedThisTurn.delete(key)
   if (state.size === 0) states.delete(key)
 }
 
 export function clearAllBaselines(): void {
   states.clear()
   pendingMutations.clear()
+  editedThisTurn.clear()
 }
 
 export function noteMutation(owner: BaselineOwner | undefined, absPath: string): void {
@@ -193,6 +224,16 @@ export function consumeMutation(owner: BaselineOwner | undefined, absPath: strin
   pending.delete(fileKey(absPath))
   if (pending.size === 0) pendingMutations.delete(key)
   return true
+}
+
+/** Drop a failed mutation intent, and its baseline if no successful edit used it. */
+export function cancelMutation(owner: BaselineOwner | undefined, absPath: string): void {
+  const key = ownerKey(owner)
+  const file = fileKey(absPath)
+  const pending = pendingMutations.get(key)
+  pending?.delete(file)
+  if (pending?.size === 0) pendingMutations.delete(key)
+  if (!editedThisTurn.get(key)?.has(file)) clearBaseline(owner, [file])
 }
 
 /** The robust identity is intentionally exported for tests and diagnostics. */

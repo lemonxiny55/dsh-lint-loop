@@ -130,6 +130,9 @@ if (isGolangci) {
       const content = readFileSync(file, 'utf8')
       const fixed = stripFixable(content)
       if (fixed !== content) writeFileSync(file, fixed, 'utf8')
+      if (process.env.FAKE_PACKAGE_TOUCH_OTHER === '1' && !file.endsWith('main.go')) {
+        writeFileSync(file, `${fixed}// touched by package fixer\n`, 'utf8')
+      }
     }
     process.exit(0)
   }
@@ -206,7 +209,11 @@ const markers = parseMarkers(content)
 
 // --- fix modes ---------------------------------------------------------------
 if (isFix) {
-  writeFileSync(file, stripFixable(content), 'utf8')
+  const fixed = stripFixable(content)
+  const injected = process.env.FAKE_FIX_INTRODUCES === '1'
+    ? '// lint: error fixer-regression fixer introduced a regression\n'
+    : process.env.FAKE_FIX_BREAKS === '1' ? '// lint: broken\n' : ''
+  writeFileSync(file, `${fixed}${injected}`, 'utf8')
   process.exit(0)
 }
 

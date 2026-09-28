@@ -8,15 +8,17 @@ English | [中文](README.zh.md)
 
 **Using it?** Tell us what works and what breaks — [star the repo](https://github.com/lemonxiny55/dsh-lint-loop), [ask a question](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a), [request a linter](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas), or [file an issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose). Feedback directly shapes the roadmap.
 
-Zero-config lint feedback loop — a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) plugin that closes the **edit → lint → fix** loop: the model edits a file, immediately sees the lint findings (rule, file:line:col, message, fixable), and can auto-repair them with one `lint_fix` call. Uses whatever the repo already has — eslint, biome, ruff, golangci-lint, or cargo clippy. No setup, no bundled linters.
+Zero-config, regression-aware lint repair for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`). After an Agent edit, `lint_repair { scope: "turn" }` batches and fixes only introduced or changed lint regressions in files edited during that turn. Existing repo debt is ignored. Uses the repo's eslint, biome, ruff, golangci-lint, or cargo clippy; no setup or bundled linters.
 
 ## What the model gets
 
 | Tool | Purpose |
 |---|---|
+| `lint_status` | Compact current-turn summary: edited files, introduced/changed regressions, and historical findings ignored by repair. |
+| `lint_repair` | **Regression-aware self-repair** — batches current-turn regressions by linter/package/crate, runs existing fixers, and re-lints for at most two rounds. Returns a repair receipt with found/fixed/remaining findings, affected files, fixer changes, and ignored pre-existing debt. Call after edits when you want one repair pass. |
 | `lint_diagnostics` | Lint findings for one file (or all files the linters have seen), with rule, `file:line:col`, message, `scope` (`preexisting` / `introduced` / `changed`), and a `fixable` flag; severity, regression-scope, and `max` filters. Takes `file_path` (alias `file`). **Call right after editing a file.** |
 | `lint_workspace_errors` | All current errors across files linted this session — including a `scope` label so historical debt is distinguishable from this turn's regressions. |
-| `lint_fix` | **The killer feature** — runs the repo's own auto-fixer (`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`) on ONE file, re-lints, and returns what changed (+added/-removed lines), remaining findings, resolved findings, a baseline summary, and the linter used. Takes `file_path` (alias `file`). Workspace-root files only. |
+| `lint_fix` | Runs the repo's own fixer on one file and re-lints, returning changed lines, remaining and resolved findings, a baseline summary, and the linter used. `lint_repair` is the turn-wide regression-only option. |
 
 Plus an optional **auto-injected system prompt section** (`lint:findings`, order 75 — right after `lsp:diagnostics`): after the model writes/edits a file through the harness, the plugin subscribes to the `fs/observed` event, lints the file through its serial pool, and injects only the **new/changed findings introduced by that edit** — **errors only by default** (set `sectionSeverity` for more), top 5 lines, never the whole workspace. Stale deltas expire (`sectionTtlMs`, default 30s). Rendered findings carry a **source code frame** (the offending line marked `█`, plus a line of context) so the model fixes without re-reading the file. And the **completion gate** (below) stops the turn from closing while edited files still have errors.
 
@@ -40,6 +42,12 @@ It is deliberately **self-limiting** — the first-party Claude Code bridge has 
 - `gate: false` disables it entirely; `autoInject: false` also disables it unless `gate: true` is set explicitly.
 
 Nothing about the gate is a hard veto — it is a bounded nudge, so it can never wedge a session.
+
+## Regression-aware repair (0.5)
+
+Call `lint_repair { scope: "turn" }` after editing. The repair loop uses the same pre-edit baselines and finding matcher as the completion gate, ignores findings already present before the turn's edits, batches files that share a package/crate run, and re-lints after every fixer pass. It stops after two passes or when no progress is made. The receipt reports regressions found, resolved, remaining, affected files, what each fixer actually changed, and ignored historical findings.
+
+File-local fixers are transactional: if a post-fix lint adds a diagnostic, the exact file contents are restored and checked again. They are skipped if they could sweep up historical fixable findings; Biome's fixability is unknown, so any old Biome finding causes a skip. Package/crate fixers run only when every finding in that scope belongs to this turn's regressions. They are not rolled back; their changed-file list and any newly observed findings are explicit in the receipt. Use `lint_status` for a compact current-turn summary. DSH currently has no stable slash-command registration seam, so this is an Agent tool rather than a `/lint-status` command.
 
 ## The loop
 
@@ -171,8 +179,8 @@ Options are passed as the plugin row's `config` in the profile patch (or default
 - **Detection** (`src/detect.ts`): config-file probe per repo root, cached, invalidated when an observed event carries a linter config basename (`biome.json`, `pyproject.toml`, …). `pyproject.toml` counts as ruff only when it really contains `[tool.ruff]`.
 - **Runner pool** (`src/runner.ts`): one serial lane per (root, linter) — a save storm queues instead of stampeding; each run is a one-shot spawn with capped stdout/stderr, killed at `timeoutMs` (SIGTERM → SIGKILL grace).
 - **Findings store** (`src/manager.ts`): per-root manager keeps the last lint result per file (512-file soft cap); `lint_fix` reads the file before and after the fix run, summarizes the line diff, and re-lints for the authoritative remaining set. Package-scoped runs are distributed — findings land under the file each one reports, so `lint_diagnostics { file }` stays per-file.
-- **Regression baseline** (`src/baseline.ts`, `src/regression.ts`): `fs/edit-intent` / `fs/write-intent` capture the first pre-mutation findings per session/file. Matching combines linter, rule, severity, normalized message, source line, and bounded location, so line insertion, duplicates, repeated edits, and package-scoped results remain stable. The baseline is retained until the turn boundary admits or gives up on the turn, even when the gate is disabled.
-- **Edit detection** (`src/section.ts`): the `fs/observed` listener only queues the file (sync, never throws); a debounced (`settleMs`) refresh lints against the regression baseline — only introduced/changed findings of the configured severity reach the prompt, capped to the top 5.
+- **Regression baseline** (`src/baseline.ts`, `src/regression.ts`): the `tools/execute` wrapper captures the first pre-mutation findings before DSH `edit` / `write` calls and tracks only successful mutations, keyed by stable session ID. The fs intent listeners remain as a compatibility path. Matching combines linter, rule, severity, normalized message, source line, and bounded location, so line insertion, duplicates, repeated edits, and package-scoped results remain stable. The baseline is cleared at the turn boundary, even when the gate is disabled.
+- **Edit detection** (`src/section.ts`): successful file-tool calls and compatible `fs/observed` events queue the file; a debounced (`settleMs`) refresh lints against the regression baseline — only introduced/changed findings of the configured severity reach the prompt, capped to the top 5.
 - **Code frames** (`src/frames.ts`): source lines are cached during a lint run and attached to the first `frameLimit` rendered findings, with the offending line marked `█`; the render path stays synchronous and degrades to no frame when the cache is cold (replay).
 - **Completion gate** (`src/gate.ts`): files observed during the turn are re-linted at `agent/turn-stopping`; unresolved introduced/changed errors trigger a bounded `agent.steer` (≤ `gateMaxSteers` per turn) that carries the findings. Historical findings remain available through diagnostics but are not gate errors.
 - **Workspace resolution**: session cwd → walk up to the nearest `.git` (bounded), same as dsh-code-index. Files outside a repo are refused.

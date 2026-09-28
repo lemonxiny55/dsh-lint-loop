@@ -1,8 +1,8 @@
 /**
  * dsh-lint-loop — DeepSeek Harness bundle entry.
  *
- * Registers model-visible lint tools (lint_diagnostics / lint_workspace_errors
- * / lint_fix) backed by auto-detected linters (eslint / biome / ruff /
+ * Registers model-visible lint tools (lint_status / lint_repair /
+ * lint_diagnostics / lint_workspace_errors / lint_fix) backed by auto-detected linters (eslint / biome / ruff /
  * golangci-lint / cargo clippy), injects
  * a compact "what your last edit broke" delta into the system prompt, and —
  * when the completion gate is on — steers the agent for another step while
@@ -73,6 +73,7 @@ export {
 export { LintManager, disposeAllManagers, managerForRoot } from './manager.js'
 export { parseEslintJson, parseBiomeJson, parseRuffJson, parseGolangciJson, parseCargoClippyJson } from './parse.js'
 export { createLintSection } from './section.js'
+export { REPAIR_MAX_ROUNDS, repairStatus, repairTurn, type RepairReceipt } from './repair.js'
 export { tools } from './tools.js'
 export { findRepoRoot } from './workspace.js'
 
@@ -84,7 +85,12 @@ import { clearGateState, handleTurnStopping, markDirty, type TurnStoppingPayload
 import { disposeAllManagers } from './manager.js'
 import { createLintSection } from './section.js'
 import { tools } from './tools.js'
-import { finishObservedMutation, prepareMutation } from './regression.js'
+import {
+  cancelToolMutation,
+  finishObservedMutation,
+  prepareMutation,
+  recordSuccessfulToolMutation,
+} from './regression.js'
 
 export const inject = ['tools', 'systemPrompt'] as const
 
@@ -92,9 +98,8 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
   applyConfig(pluginConfig)
   ctx.effect(() => {
     const config = getConfig()
-    // The gate needs the fs/observed listener, which autoInject:false turns
-    // off. Keep the 0.1 behavior (autoInject:false = tools only) unless the
-    // user asks for the gate explicitly.
+    // Tracking is internal to turn-scoped repair; it remains active even when
+    // prompt injection and the completion gate are disabled.
     const gateEnabled = config.gate && (config.autoInject || pluginConfig?.gate === true)
     const disposers: Array<() => void> = []
     console.log('[dsh-lint-loop] plugin loaded')
@@ -115,15 +120,55 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
       )
     }
 
-    const listenerNeeded = section !== null || gateEnabled
-    if (listenerNeeded && typeof ctx.on === 'function') {
+    if (typeof ctx.on === 'function') {
+      const onToolExecute = async (...args: unknown[]): Promise<unknown> => {
+        const execution = args[0] as { name?: string; arguments?: unknown } | undefined
+        const next = args[1]
+        if ((execution?.name !== 'edit' && execution?.name !== 'write') || typeof next !== 'function') {
+          return typeof next === 'function' ? (next as () => unknown)() : undefined
+        }
+        const callArgs = execution.arguments && typeof execution.arguments === 'object'
+          ? execution.arguments as { file_path?: unknown; file?: unknown }
+          : undefined
+        const filePath = typeof callArgs?.file_path === 'string'
+          ? callArgs.file_path
+          : typeof callArgs?.file === 'string'
+            ? callArgs.file
+            : undefined
+        if (!filePath) return (next as () => unknown)()
+
+        // tools/execute wraps the actual file tool: capture before dispatch,
+        // then track only a successful mutation. Lint failures never block it.
+        await prepareMutation(filePath, execution).catch(() => undefined)
+        try {
+          const result = await (next as () => Promise<unknown>)()
+          const isError = !!result && typeof result === 'object'
+            && (result as { isError?: unknown }).isError === true
+          if (isError) {
+            await cancelToolMutation(filePath, execution).catch(() => undefined)
+            return result
+          }
+          const mutation = await recordSuccessfulToolMutation(filePath, execution).catch(() => null)
+          if (mutation) {
+            if (isLinterConfigBasename(basenameOf(filePath))) invalidateProbes()
+            section?.handleObserved(mutation.abs, mutation.owner)
+            markDirty(mutation.abs, mutation.owner)
+          }
+          return result
+        } catch (error) {
+          await cancelToolMutation(filePath, execution).catch(() => undefined)
+          throw error
+        }
+      }
+      const offToolExecute = ctx.on('tools/execute', onToolExecute) as (() => void) | undefined
+      if (offToolExecute) disposers.push(offToolExecute)
+
       const onMutationIntent = (...args: unknown[]): unknown => {
         const target = args[0] as { displayPath?: string } | undefined
         const actor = args[1]
         const next = args[2]
-        // Both intent waterfalls are observed pass-through hooks. Baseline
-        // capture happens before next() delegates to the harness policy; a
-        // failed/missing linter must never prevent the actual mutation.
+        // Compatibility path for older integrations where this listener owns
+        // the fs intent slot. Current DSH policies may short-circuit it.
         return prepareMutation(target?.displayPath, actor)
           .catch(() => undefined)
           .then(() => typeof next === 'function' ? (next as () => unknown)() : undefined)
@@ -156,10 +201,9 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
       }) as (() => void) | undefined
       if (off) disposers.push(off)
 
-      // Even with gate:false, auto-injection needs the turn boundary to drop
-      // the old baseline; otherwise a historical finding could be carried
-      // into a later turn and be mistaken for pre-existing forever.
-      if (gateEnabled || section !== null) {
+      // Turn-scoped repair needs the turn boundary to drop its baseline even
+      // when auto-injection and the completion gate are both disabled.
+      {
         const offTurn = ctx.on('agent/turn-stopping', (...args: unknown[]) => {
           const payload = args[0] as TurnStoppingPayload | undefined
           // The seam is an awaited serial checkpoint: return the promise so the
@@ -182,9 +226,9 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
           )
         }
       }
-    } else if (gateEnabled) {
+    } else {
       console.log(
-        '[dsh-lint-loop] ctx.on unavailable — completion gate and edit-triggered injection disabled (tools still work)',
+        '[dsh-lint-loop] ctx.on unavailable — turn repair tracking, completion gate, and edit-triggered injection unavailable (tools still work)',
       )
     }
 

@@ -1,9 +1,12 @@
+import path from 'node:path'
+import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apply } from '../src/index.js'
 import { applyConfig } from '../src/config.js'
 import { disposeAllManagers, managerForRoot } from '../src/manager.js'
 import { invalidateProbes, probeLinters } from '../src/detect.js'
 import { clearGateState } from '../src/gate.js'
+import { ownerFromActor, turnEditedFiles } from '../src/baseline.js'
 import { tools } from '../src/tools.js'
 import { fakeLinterPath, makeFixtureRepo, type FixtureRepo } from './helpers/fixtures.js'
 
@@ -105,23 +108,23 @@ afterEach(async () => {
 })
 
 describe('plugin lifecycle', () => {
-  it('registers tools + section + fs listener + gate listener, disposes all, and can mount again', () => {
+  it('registers tools + section + mutation tracking + gate listener, disposes all, and can mount again', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
     const first = mount(PLUGIN_CONFIG)
-    expect(first.registered).toEqual(['lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
+    expect(first.registered).toEqual(['lint_status', 'lint_repair', 'lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     expect(first.sectionName).toBe('lint:findings')
     expect(first.sectionOrder).toBe(75)
-    expect(first.listenerNames).toEqual(['fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
+    expect(first.listenerNames).toEqual(['tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(first.sectionText()).toContain('lint_diagnostics')
 
     first.dispose()
-    expect(first.disposed()).toEqual({ tools: 3, sections: 1, listeners: 4 })
+    expect(first.disposed()).toEqual({ tools: 5, sections: 1, listeners: 5 })
 
     const second = mount(PLUGIN_CONFIG)
-    expect(second.registered).toEqual(['lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
+    expect(second.registered).toEqual(['lint_status', 'lint_repair', 'lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     second.dispose()
-    expect(second.disposed()).toEqual({ tools: 3, sections: 1, listeners: 4 })
+    expect(second.disposed()).toEqual({ tools: 5, sections: 1, listeners: 5 })
   })
 
   it('injects a findings delta after an fs/observed edit event (the closed loop)', async () => {
@@ -156,7 +159,7 @@ describe('plugin lifecycle', () => {
     mounted.dispose()
   })
 
-  it('captures the pre-edit baseline through the intent waterfall and passes through next()', async () => {
+  it('captures the pre-edit baseline through the fs intent compatibility waterfall', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const repo: FixtureRepo = await makeFixtureRepo()
     await repo.write('eslint.config.mjs', 'export default []\n')
@@ -182,6 +185,70 @@ describe('plugin lifecycle', () => {
       expect(text).toContain('fresh-rule')
       expect(text).not.toContain('old-rule')
     }, { timeout: 10_000, interval: 100 })
+    mounted.dispose()
+  })
+
+  it('tracks successful DSH edit tools even when the fs intent listener is not reached', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const repo: FixtureRepo = await makeFixtureRepo()
+    await repo.write('eslint.config.mjs', 'export default []\n')
+    await repo.write('src/intent.ts', 'const old = 1 // lint: error old-rule historical debt\n')
+    const mounted = mount(PLUGIN_CONFIG)
+    const execution = {
+      name: 'edit',
+      arguments: { file_path: 'src/intent.ts' },
+      agent: { session: { id: 'stable-session-id', header: { cwd: repo.root } } },
+    }
+    const next = vi.fn(async () => {
+      await repo.write(
+        'src/intent.ts',
+        'const old = 1 // lint: error old-rule historical debt\nconst fresh = 2 // lint: error fresh-rule this edit introduced\n',
+      )
+      return { isError: false, content: [] }
+    })
+
+    // A first-party fs policy can short-circuit fs/edit-intent before this
+    // plugin's listener. The around-dispatch observer still sees the edit.
+    await mounted.listenersFor('tools/execute')[0](execution, next, undefined)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(turnEditedFiles(ownerFromActor(execution))).toEqual([path.resolve(repo.root, 'src/intent.ts')])
+
+    const diagnostics = tools.find((tool) => tool.name === 'lint_diagnostics')!.execute as
+      (args: unknown, exec: unknown) => Promise<unknown>
+    const clonedSessionExec = {
+      agent: { session: { id: 'stable-session-id', header: { cwd: repo.root } } },
+    }
+    const introduced = await diagnostics(
+      { file_path: 'src/intent.ts', scope: 'introduced' },
+      clonedSessionExec,
+    ) as Array<Record<string, unknown>>
+    const preexisting = await diagnostics(
+      { file_path: 'src/intent.ts', scope: 'preexisting' },
+      clonedSessionExec,
+    ) as Array<Record<string, unknown>>
+    expect(introduced.map((item) => item.rule)).toEqual(['fresh-rule'])
+    expect(preexisting.map((item) => item.rule)).toEqual(['old-rule'])
+    mounted.dispose()
+  })
+
+  it('does not track failed write tools as files edited this turn', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const repo: FixtureRepo = await makeFixtureRepo()
+    await repo.write('eslint.config.mjs', 'export default []\n')
+    const original = 'const old = 1\n'
+    const file = await repo.write('src/failed.ts', original)
+    const mounted = mount(PLUGIN_CONFIG)
+    const execution = {
+      name: 'write',
+      arguments: { file_path: 'src/failed.ts', content: 'const newer = 2\n' },
+      agent: { session: { id: 'failed-write-session', header: { cwd: repo.root } } },
+    }
+    const next = vi.fn(async () => ({ isError: true, content: [] }))
+
+    await mounted.listenersFor('tools/execute')[0](execution, next, undefined)
+
+    expect(await readFile(file, 'utf8')).toBe(original)
+    expect(turnEditedFiles(ownerFromActor(execution))).toEqual([])
     mounted.dispose()
   })
 
@@ -254,14 +321,14 @@ describe('plugin lifecycle', () => {
     mounted.dispose()
   })
 
-  it('stays quiet (no section, no listeners) when autoInject is false and the gate is not requested', () => {
+  it('keeps turn repair tracking without prompt injection when autoInject is false', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false })
-    expect(mounted.registered).toHaveLength(3)
-    expect(mounted.listenerNames).toEqual([])
+    expect(mounted.registered).toHaveLength(5)
+    expect(mounted.listenerNames).toEqual(['tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(() => mounted.sectionText()).toThrow('section was not registered')
     mounted.dispose()
-    expect(mounted.disposed()).toEqual({ tools: 3, sections: 0, listeners: 0 })
+    expect(mounted.disposed()).toEqual({ tools: 5, sections: 0, listeners: 5 })
   })
 })
 
@@ -280,7 +347,7 @@ describe('completion gate wiring', () => {
   it('arms the gate without a section when autoInject is false but gate is explicit', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false, gate: true })
-    expect(mounted.listenerNames).toEqual(['fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
+    expect(mounted.listenerNames).toEqual(['tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(() => mounted.sectionText()).toThrow('section was not registered')
     mounted.dispose()
   })

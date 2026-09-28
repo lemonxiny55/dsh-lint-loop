@@ -12,12 +12,13 @@
  * `lint_workspace_errors` sees the rest of the package too.
  */
 
-import { access, constants, readFile } from 'node:fs/promises'
+import { access, constants, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getConfig } from './config.js'
 import { chooseLinter, probeLinters } from './detect.js'
 import { LinterTimeoutError, MissingLinterError, NoConfigError, UnsupportedFileError } from './errors.js'
 import type { Finding } from './findings.js'
+import { matchFindings } from './findings.js'
 import { recordFileLines } from './frames.js'
 import {
   linterFamilyForExt,
@@ -65,6 +66,23 @@ export interface FixResult {
   remaining: Finding[]
   /** Findings hidden by the tool-level cap (set by the tool, not the manager). */
   dropped: number
+}
+
+export interface BatchFixResult {
+  linter: LinterKey
+  scope: string
+  attemptedFiles: string[]
+  /** Files changed at any point by the fixer, including a later rollback. */
+  modifiedFiles: string[]
+  /** Files still different after any safe file-local rollback. */
+  changedFiles: string[]
+  rolledBackFiles: string[]
+  before: Finding[]
+  after: Finding[]
+  fixerIntroducedRegressions: Finding[]
+  /** A failed fixer or failed verification, retained in the repair receipt. */
+  error?: string
+  skippedBecause?: string
 }
 
 export class LintManager {
@@ -166,6 +184,140 @@ export class LintManager {
       }
     }
     return out
+  }
+
+  /** Run one fixer per file/package/crate group and verify every result. */
+  async fixMany(absPaths: readonly string[], permittedFindings: readonly Finding[] = []): Promise<BatchFixResult[]> {
+    const groups = new Map<string, { linter: LinterKey; target: RunTarget; members: string[] }>()
+    for (const absPath of absPaths) {
+      const linter = await this.requireLinter(absPath)
+      const spec = LINTER_SPECS[linter]
+      const target = await resolveRunTarget(spec, absPath, this.root)
+      const id = `${linter}::${target.key}`
+      const group = groups.get(id) ?? { linter, target, members: [] }
+      group.members.push(absPath)
+      groups.set(id, group)
+    }
+    const results: BatchFixResult[] = []
+    for (const group of groups.values()) {
+      const spec = LINTER_SPECS[group.linter]
+      const scopeFiles = await filesInScope(group.target, group.members, spec.scope)
+      const snapshots = new Map<string, string>()
+      for (const file of scopeFiles) {
+        const content = await readFile(file, 'utf8').catch(() => undefined)
+        if (content !== undefined) snapshots.set(file, content)
+      }
+      const before = await this.runLint(group.linter, group.target)
+      const allowedInScope = permittedFindings.filter((finding) =>
+        isUnder(normalizeDrive(path.resolve(this.root, finding.file)), group.target.scopeDir),
+      )
+      const unrelated = matchFindings(allowedInScope, before).unmatchedCurrent.map((index) => before[index])
+      const riskyHistoricalFindings = spec.scope === 'file'
+        ? unrelated.filter((finding) => group.linter === 'biome' || finding.fixable)
+        : unrelated
+      if (riskyHistoricalFindings.length > 0) {
+        const scopeLabel = spec.scope === 'file' ? 'file' : 'package/crate'
+        const reason = spec.scope === 'file'
+          ? `${riskyHistoricalFindings.length} historical finding(s) could be fixed by the broad file fixer`
+          : `${unrelated.length} finding(s) outside this turn's regressions`
+        {
+          results.push({
+            linter: group.linter,
+            scope: path.relative(this.root, group.target.scopeDir) || '.',
+            attemptedFiles: group.members.map((file) => toRelative(file, this.root)),
+            modifiedFiles: [],
+            changedFiles: [],
+            rolledBackFiles: [],
+            before,
+            after: before,
+            fixerIntroducedRegressions: [],
+            skippedBecause: `${scopeLabel} scope has ${reason}; broad fixer skipped to preserve existing debt`,
+          })
+          continue
+        }
+      }
+      let runError: string | undefined
+      try {
+        const outcome = await this.runWithFlagFallback(group.linter, spec.fixArgs, group.target)
+        this.assertRunnable(group.linter, outcome)
+      } catch (error) {
+        runError = (error as Error).message ?? String(error)
+      }
+      const modifiedFiles: string[] = []
+      const afterScopeFiles = await filesInScope(group.target, group.members, spec.scope)
+      const observedFiles = [...new Set([...scopeFiles, ...afterScopeFiles])]
+      for (const file of observedFiles) {
+        const content = await readFile(file, 'utf8').catch(() => undefined)
+        if (snapshots.get(file) !== content) modifiedFiles.push(file)
+      }
+      const rolledBackFiles: string[] = []
+      let after: Finding[]
+      let error = runError
+      let verificationSucceeded = false
+      try {
+        after = await this.runLint(group.linter, group.target)
+        verificationSucceeded = true
+      } catch (verificationError) {
+        error = [runError, `post-fix lint verification failed: ${(verificationError as Error).message ?? String(verificationError)}`]
+          .filter(Boolean).join('; ')
+        if (spec.scope === 'file' && modifiedFiles.length > 0) {
+          const file = group.members[0]
+          const original = snapshots.get(file)
+          if (original !== undefined) {
+            await writeFile(file, original, 'utf8')
+            rolledBackFiles.push(file)
+            error += '; original file restored after verification failure'
+          }
+        }
+        after = []
+        try {
+          after = await this.runLint(group.linter, group.target)
+          verificationSucceeded = true
+        } catch (retryError) {
+          error += `; verification retry failed: ${(retryError as Error).message ?? String(retryError)}`
+        }
+      }
+      const fixerIntroducedRegressions = matchFindings(before, after).unmatchedCurrent.map((index) => after[index])
+      if (verificationSucceeded) this.replaceScope(group.linter, spec, group.target, group.members, after)
+      if (spec.scope === 'file' && modifiedFiles.length > 0 && matchFindings(before, after).unmatchedCurrent.length > 0) {
+        // File-local fixers are transactional: if the fixer adds any diagnostic,
+        // restore the exact bytes and verify the restored state.
+        const file = group.members[0]
+        const original = snapshots.get(file)
+        if (original !== undefined) {
+          await writeFile(file, original, 'utf8')
+          rolledBackFiles.push(file)
+            try {
+              after = await this.runLint(group.linter, group.target)
+              this.replaceScope(group.linter, spec, group.target, group.members, after)
+            } catch (rollbackError) {
+              error = [error, `rollback verification failed: ${(rollbackError as Error).message ?? String(rollbackError)}`]
+                .filter(Boolean).join('; ')
+              after = before
+            }
+        }
+      }
+      const changedFiles = [] as string[]
+      const finalScopeFiles = await filesInScope(group.target, group.members, spec.scope)
+      const allObservedFiles = [...new Set([...observedFiles, ...finalScopeFiles])]
+      for (const file of allObservedFiles) {
+        const current = await readFile(file, 'utf8').catch(() => undefined)
+        if (snapshots.get(file) !== current) changedFiles.push(file)
+      }
+      results.push({
+        linter: group.linter,
+        scope: spec.scope === 'file' ? 'file' : path.relative(this.root, group.target.scopeDir) || '.',
+        attemptedFiles: group.members.map((file) => toRelative(file, this.root)),
+        modifiedFiles: modifiedFiles.map((file) => toRelative(file, this.root)),
+        changedFiles: changedFiles.map((file) => toRelative(file, this.root)),
+        rolledBackFiles: rolledBackFiles.map((file) => toRelative(file, this.root)),
+        before,
+        after,
+        fixerIntroducedRegressions,
+        ...(error === undefined ? {} : { error }),
+      })
+    }
+    return results
   }
 
   /** Cache the file's current lines so rendered findings can carry a code frame. */
@@ -367,6 +519,34 @@ async function nearestManifestDir(startDir: string, stopDir: string, manifest: s
     dir = parent
   }
   return null
+}
+
+async function filesInScope(
+  target: RunTarget,
+  members: readonly string[],
+  scope: LinterSpec['scope'],
+): Promise<string[]> {
+  if (scope === 'file') return [...members]
+  const extensions = scope === 'dir' ? ['.go'] : ['.rs']
+  const out: string[] = []
+  const pending = [target.scopeDir]
+  while (pending.length > 0) {
+    const dir = pending.pop()!
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (entry.name === '.git' || entry.name === 'target' || entry.name === 'node_modules') continue
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (scope === 'cwd') pending.push(full)
+      } else if (extensions.includes(path.extname(entry.name).toLowerCase())) out.push(full)
+    }
+  }
+  return [...new Set([...out, ...members])]
 }
 
 /** True when `storeKey` is the directory itself or a descendant of it. */

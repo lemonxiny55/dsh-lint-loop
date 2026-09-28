@@ -8,15 +8,17 @@
 
 **在用?** 告诉我们哪里顺手、哪里出问题——[点个 Star](https://github.com/lemonxiny55/dsh-lint-loop)、[提问](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a)、[求支持新 linter](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas),或[提 issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose)。反馈会直接影响路线图。
 
-零配置 lint 反馈闭环 —— 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(`dsh`)插件,打通 **编辑 → lint → 修复** 的回路:模型编辑文件后,立刻看到 lint 发现(规则、file:line:col、消息、能否自动修),再一个 `lint_fix` 调用即可自动修复。使用仓库里已有的 linter——eslint、biome、ruff、golangci-lint 或 cargo clippy。零配置,不捆绑任何 linter。
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(`dsh`)的零配置、回归感知 lint 修复。Agent 编辑后调用 `lint_repair { scope: "turn" }`,插件按 linter/package/crate 批处理,只修复本轮文件里新增或变化的 lint regression,忽略仓库历史债务。使用仓库已有的 eslint、biome、ruff、golangci-lint 或 cargo clippy;无需配置,不捆绑 linter。
 
 ## 模型得到什么
 
 | 工具 | 用途 |
 |---|---|
+| `lint_status` | 当前回合摘要:编辑文件、新增/变化的 regression,以及 repair 忽略的历史发现。 |
+| `lint_repair` | **回归感知自动修复** —— 按 linter/package/crate 批处理本轮 regression,运行已有 fixer,最多两轮并在每轮后重新 lint。回执包含发现/修复/剩余问题、受影响文件、fixer 实际改动与忽略的历史债务。 |
 | `lint_diagnostics` | 单文件(或所有已见文件)的 lint 发现:规则、`file:line:col`、消息、`scope`(`preexisting` / `introduced` / `changed`)与 `fixable`;支持 severity、回归 scope 与 `max` 截断。参数 `file_path`(别名 `file`)。**编辑完文件立刻调用。** |
 | `lint_workspace_errors` | 本会话当前 error 总览,每条带 `scope`,可区分历史债务和本轮回归。 |
-| `lint_fix` | **杀手锏** —— 对单文件跑仓库自己的自动修复(`eslint --fix` / `biome check --write` / `ruff check --fix` / `golangci-lint run --fix` / `cargo clippy --fix`),然后复检,返回变更行数摘要(+增/-删)、剩余与已解决发现、baseline 摘要和所用 linter。参数 `file_path`(别名 `file`)。只在工作区根内操作。 |
+| `lint_fix` | 对单文件运行仓库已有 fixer 并复检,返回变更、剩余与已解决发现、baseline 摘要和 linter。要一次处理本轮 regression 时使用 `lint_repair`。 |
 
 外加一个可选的**自动注入 system prompt section**(`lint:findings`,order 75——紧跟 `lsp:diagnostics` 之后):模型通过 harness 写/改文件后,插件订阅 `fs/observed` 事件,用自己的串行池 lint 该文件,只注入这次编辑**新增/变化**的发现——**默认只注入 error**(`sectionSeverity` 可调),最多 top 5 行,绝不灌全仓库。过期增量自动失效(`sectionTtlMs`,默认 30s)。渲染的发现带**源码代码帧**(问题行用 `█` 标出,附一行上下文),模型无需回读文件即可修改。而**完成门禁**(见下)会阻止"文件里还有错误却收工"。
 
@@ -40,6 +42,12 @@ src/a.ts:7:5   error  eqeqeq          Expected '===' and instead saw '=='.
 - `gate: false` 彻底关闭;`autoInject: false` 时除非显式 `gate: true` 否则也关闭。
 
 门禁不是硬否决,只是有界的一脚——因此永远不会卡死会话。
+
+## 回归感知修复(0.5)
+
+编辑后调用 `lint_repair { scope: "turn" }`。它复用完成门禁的编辑前 baseline 与 finding matcher,忽略本轮编辑前已经存在的问题,并把同一 package/crate 的文件合并为一次 fixer 调用。每轮修复后都会重新 lint;最多两轮,或在没有进展时停止。回执会报告发现、已修复、剩余、受影响文件、fixer 实际修改文件及忽略的历史发现。
+
+文件级 fixer 若复检引入新诊断,会恢复文件原始内容并再次检查。如果它可能顺带修复历史可修问题,就跳过 fixer;Biome 无法可靠判断 fixability,因此文件里只要有旧 finding 就跳过。只有当 package/crate 范围内的所有发现都属于本轮 regression 时,才运行包级/crate 级 fixer。包级修复可能修改邻近源文件,插件不做不可靠的回滚;回执明确列出修改文件与新发现。`lint_status` 提供本轮状态摘要。当前 DSH 插件 API 没有稳定的 slash-command 注册接口,所以这里提供 Agent 工具,不伪造 `/lint-status` 命令。
 
 ## 闭环
 
@@ -171,8 +179,8 @@ linter 缺失?工具会给出确切安装命令:`linter "eslint" is not installe
 - **探测**(`src/detect.ts`):按 repo root 探测配置文件,带缓存;观察事件携带 linter 配置文件名(`biome.json`、`pyproject.toml`、…)时失效重探。`pyproject.toml` 只有真的含 `[tool.ruff]` 才算 ruff。
 - **Runner 池**(`src/runner.ts`):每 (root, linter) 一条串行车道——保存风暴只会排队,不会并发开 N 个 linter;每次运行一次性 spawn,stdout/stderr 封顶,`timeoutMs` 到点杀掉(SIGTERM → SIGKILL 宽限)。
 - **发现存储**(`src/manager.ts`):每 root 一个 manager,保存每文件最近一次 lint 结果(512 文件软上限);`lint_fix` 修复前后各读一次文件,汇总行级 diff,再复检拿到权威的剩余集合。包级运行的结果会**分发**——发现落到各自上报的文件下,`lint_diagnostics { file }` 仍然只回答该文件。
-- **回归 baseline**(`src/baseline.ts`、`src/regression.ts`):`fs/edit-intent` / `fs/write-intent` 在实际 mutation 前记录每个 session/file 的第一份 findings。匹配综合 linter、rule、severity、标准化 message、源码行与有界位置距离,处理前置插行、重复 rule/message、同一 turn 多次编辑和 package-scoped 结果。即使关闭 gate,baseline 也会保留到 turn boundary 后清理。
-- **编辑检测**(`src/section.ts`):`fs/observed` 监听只入队文件(同步、绝不抛异常);`settleMs` 防抖刷新后与回归 baseline 比较——只有配置级别的新增/变化发现进入 prompt,最多 top 5。
+- **回归 baseline**(`src/baseline.ts`、`src/regression.ts`):`tools/execute` 在 DSH `edit` / `write` 调用前记录每个 session/file 的第一份 findings,并且只把成功 mutation 计入本轮编辑;以稳定 session ID 关联状态。fs intent 监听作为兼容路径保留。匹配综合 linter、rule、severity、标准化 message、源码行与有界位置距离,处理前置插行、重复 rule/message、同一 turn 多次编辑和 package-scoped 结果。即使关闭 gate,baseline 也会在 turn boundary 清理。
+- **编辑检测**(`src/section.ts`):成功的文件工具调用与兼容的 `fs/observed` 事件会入队文件;`settleMs` 防抖刷新后与回归 baseline 比较——只有配置级别的新增/变化发现进入 prompt,最多 top 5。
 - **代码帧**(`src/frames.ts`):lint 运行时缓存源码行,为前 `frameLimit` 条渲染的发现附上问题行标记 `█` 的上下文;渲染路径保持同步,缓存冷时(回放)优雅降级为不带帧。
 - **完成门禁**(`src/gate.ts`):本轮观察到的文件在 `agent/turn-stopping` 时重新 lint;未解决的新增/变化 error 才触发有界的 `agent.steer`(每轮 ≤ `gateMaxSteers`),随附发现。历史发现仍可通过 diagnostics 查看,但不算 gate error。
 - **工作区解析**:会话 cwd → 向上找最近 `.git`(有界),与 dsh-code-index 一致;仓库外的文件一律拒绝。

@@ -86,7 +86,7 @@ async function collectErrors(files: readonly string[], owner: BaselineOwner | un
       for (const abs of absPaths) {
         // The owner-less path is the pre-0.4 integration seam: markDirty()
         // means "a mutation just happened", so its fallback baseline starts
-        // empty. Modern DSH captures the real pre-edit findings in intent.
+        // empty. Modern DSH captures pre-edit findings in the tools/execute wrapper.
         if (!hasBaseline(owner, abs)) ensureBaseline(owner, abs, owner ? manager.findingsFor(abs) : [])
       }
       const results = await manager.lintMany(absPaths)

@@ -1,4 +1,4 @@
-import type { JsonValue, ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
 import { applyConfig } from '../src/config.js'
 import { invalidateProbes } from '../src/detect.js'
@@ -14,6 +14,7 @@ import {
 } from './helpers/fixtures.js'
 
 const FAKE = fakeLinterPath()
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 const lintDiagnostics = tools.find((tool) => tool.name === 'lint_diagnostics')!
 const lintWorkspaceErrors = tools.find((tool) => tool.name === 'lint_workspace_errors')!
 const lintFix = tools.find((tool) => tool.name === 'lint_fix')!

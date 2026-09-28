@@ -2,6 +2,30 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## 0.5.0 — 2026-09-27
+
+Regression-aware self-repair: one bounded Agent call repairs only lint
+regressions introduced or changed in files edited during the current turn.
+
+- **feat(repair):** add `lint_repair { scope: "turn" }`, which batches edited
+  files by existing linter/package/crate targets, prioritizes each linter's
+  existing fixer, re-lints after each pass, and stops after at most two passes.
+- **feat(safety):** file-local fixers snapshot and verify their target; if a
+  fixer adds a diagnostic, the file is restored and linted again. They are
+  skipped when they could also fix historical debt (Biome's fixability is
+  unknown, so any old finding is a reason to skip). Package and crate fixers
+  run only when the scoped findings are all current-turn regressions. They are
+  not rolled back; the receipt lists every file they changed and reports newly
+  introduced findings.
+- **feat(receipt):** return regressions found, resolved, remaining, affected
+  files, actual fixer changes, ignored pre-existing findings, and stop reason.
+- **feat(status):** add a compact `lint_status` Agent tool. The current DSH
+  plugin surface exposes tools and prompt sections but no stable slash-command
+  registration API, so `/lint-status` is deferred rather than emulated.
+- **test/docs:** cover turn scoping, ignored historical debt, package fixer
+  batches, transactional rollback, and bounded retries. Stylelint is deferred
+  to keep this release focused on safe regression repair.
+
 ## 0.4.0 — 2026-09-19
 
 Regression-aware lint loop: an edit is evaluated against the findings that

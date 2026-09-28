@@ -1,6 +1,6 @@
 /** Model-visible tools: lint_diagnostics, lint_workspace_errors, lint_fix. */
 
-import { defineTool, type JsonValue } from '@deepseek-ai/dsh-tools'
+import { defineTool } from '@deepseek-ai/dsh-tools'
 import path from 'node:path'
 import {
   classifyFindings,
@@ -8,6 +8,7 @@ import {
   ensureBaseline,
   hasBaseline,
   ownerFromActor,
+  turnEditedFiles,
   type BaselineOwner,
 } from './baseline.js'
 import { getConfig } from './config.js'
@@ -25,6 +26,9 @@ import { frameFor } from './frames.js'
 import { markDirty } from './gate.js'
 import { LintManager, managerForRoot, type FixResult } from './manager.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
+import { repairStatus, repairTurn } from './repair.js'
+
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 
 /** Minimal structural types for the harness surfaces we touch. */
 interface ToolCwdContext {
@@ -201,6 +205,91 @@ function currentFindingsByFile(root: string, findings: readonly Finding[]): Map<
 
 export const tools = [
   defineTool({
+    name: 'lint_status',
+    description: 'Show this turn\'s lint repair status: introduced/changed regressions and pre-existing findings ignored by the repair loop.',
+    parameters: {
+      repoRoot: { type: 'string', description: 'Optional absolute repo path; defaults to the session workspace root.' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args, value: JsonValue): TextBlock[] => {
+        const record = isRecord(value) ? value : {}
+        const reg = Array.isArray(record.introducedOrChanged) ? record.introducedOrChanged.length : 0
+        const old = Array.isArray(record.preExistingIgnored) ? record.preExistingIgnored.length : 0
+        const files = Array.isArray(record.files) ? record.files.length : 0
+        return [{ type: 'text', text: `# lint_status (turn)\ntracked edited files: ${files}\nintroduced/changed regressions: ${reg}\npre-existing findings ignored: ${old}` }]
+      },
+    },
+    async execute(args: { repoRoot?: string }, exec: ToolRunExec): Promise<Record<string, JsonValue>> {
+      try {
+        const root = await resolveRoot(args.repoRoot, exec)
+        const status = await repairStatus(root, ownerForExec(exec))
+        return {
+          scope: status.scope,
+          files: status.files,
+          introducedOrChanged: status.introducedOrChanged.map(publicFinding),
+          preExistingIgnored: status.preExistingIgnored.map(publicFinding),
+        }
+      } catch (error) {
+        return { error: friendlyMessage(error) }
+      }
+    },
+  }),
+  defineTool({
+    name: 'lint_repair',
+    description: 'Repair only introduced/changed lint regressions in files edited this turn. Uses existing linters and fixers, verifies after each bounded pass, and leaves historical lint debt untouched.',
+    parameters: {
+      scope: { type: 'string', enum: ['turn'], description: 'Required repair scope. `turn` considers files edited by the agent in this turn only.' },
+      repoRoot: { type: 'string', description: 'Optional absolute repo path; defaults to the session workspace root.' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args, value: JsonValue): TextBlock[] => {
+        if (isRecord(value) && typeof value.error === 'string') return [{ type: 'text', text: `lint_repair: ${value.error}` }]
+        const receipt = isRecord(value) ? value : {}
+        const listCount = (key: string) => Array.isArray(receipt[key]) ? receipt[key].length : 0
+        const runs = Array.isArray(receipt.fixerRuns) ? receipt.fixerRuns as Array<Record<string, JsonValue>> : []
+        const runLines = runs.map((run) => {
+          const changed = Array.isArray(run.changedFiles) ? run.changedFiles.join(', ') : ''
+          const modified = Array.isArray(run.modifiedFiles) ? run.modifiedFiles.join(', ') : ''
+          const rolledBack = Array.isArray(run.rolledBackFiles) ? run.rolledBackFiles.join(', ') : ''
+          const skipped = typeof run.skippedBecause === 'string' ? `; skipped: ${run.skippedBecause}` : ''
+          return `fixer ${String(run.linter)} (${String(run.scope)}): changed ${changed || 'none'}; touched ${modified || 'none'}${rolledBack ? `; rolled back ${rolledBack}` : ''}${skipped}`
+        })
+        return [{ type: 'text', text: [
+          '# lint_repair (turn)',
+          `regressions found: ${listCount('regressionsFound')}`,
+          `auto-fixed: ${listCount('autoFixed')}`,
+          `remaining: ${listCount('remaining')}`,
+          `affected files: ${Array.isArray(receipt.affectedFiles) ? receipt.affectedFiles.join(', ') || 'none' : 'none'}`,
+          `fixer batches: ${runs.length}; rounds: ${String(receipt.rounds ?? 0)}; stopped: ${String(receipt.stoppedBecause ?? 'unknown')}`,
+          ...runLines,
+          `fixer errors: ${listCount('fixerErrors')}`,
+          `pre-existing issues ignored: ${listCount('preExistingIssuesIgnored')}`,
+        ].join('\n') }]
+      },
+    },
+    async execute(args: { scope?: 'turn'; repoRoot?: string }, exec: ToolRunExec): Promise<Record<string, JsonValue>> {
+      try {
+        if (args.scope !== 'turn') return { error: 'scope "turn" is required' }
+        const root = await resolveRoot(args.repoRoot, exec)
+        const owner = ownerForExec(exec)
+        const receipt = await repairTurn(root, owner)
+        for (const file of turnEditedFiles(owner)) markDirty(file, owner)
+        return {
+          ...receipt,
+          regressionsFound: receipt.regressionsFound.map(publicFinding),
+          autoFixed: receipt.autoFixed.map(publicFinding),
+          remaining: receipt.remaining.map(publicFinding),
+          fixerIntroducedRegressions: receipt.fixerIntroducedRegressions.map(publicFinding),
+          preExistingIssuesIgnored: receipt.preExistingIssuesIgnored.map(publicFinding),
+        } as unknown as Record<string, JsonValue>
+      } catch (error) {
+        return { error: friendlyMessage(error) }
+      }
+    },
+  }),
+  defineTool({
     name: 'lint_diagnostics',
     description:
       'Lint findings (rule, file:line:col, message, fixable) for one file — or every file the linters have seen. '
@@ -261,7 +350,7 @@ export const tools = [
         if (target) {
           const abs = await resolveFile(root, target)
           if (!hasBaseline(owner, abs)) {
-            // A direct tool call may predate the modern intent hook. Reuse a
+            // A direct tool call may predate edit tracking. Reuse a
             // known manager snapshot when available; otherwise stay
             // conservative and label the first observation pre-existing
             // rather than claiming it was introduced by this turn.

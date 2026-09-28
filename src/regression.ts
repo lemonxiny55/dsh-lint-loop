@@ -3,8 +3,10 @@
 import path from 'node:path'
 import {
   consumeMutation,
+  cancelMutation,
   ensureBaseline,
   hasBaseline,
+  markTurnEdited,
   noteMutation,
   ownerFromActor,
   type BaselineOwner,
@@ -42,10 +44,9 @@ export async function resolveObservedFile(
 }
 
 /**
- * Capture the pre-mutation findings before the filesystem waterfall delegates
- * to the harness policy. The linter is allowed to fail here: an unavailable
- * linter must never block a write, and the compatibility fallback can still
- * use the manager's last known store entry.
+ * Capture the pre-mutation findings before a DSH file tool dispatch (or an
+ * older filesystem intent hook). Linter failure must never block the write;
+ * the compatibility fallback uses the manager's last known store entry.
  */
 export async function prepareMutation(displayPath: string | undefined, actor: unknown): Promise<void> {
   if (!displayPath) return
@@ -65,6 +66,28 @@ export async function prepareMutation(displayPath: string | undefined, actor: un
   noteMutation(owner, resolved.abs)
 }
 
+/** Confirm and record an edit/write after the DSH tool call returned successfully. */
+export async function recordSuccessfulToolMutation(
+  displayPath: string | undefined,
+  actor: unknown,
+): Promise<{ owner: BaselineOwner | undefined; abs: string } | null> {
+  if (!displayPath) return null
+  const resolved = await resolveObservedFile(displayPath, actor)
+  if (!resolved) return null
+  const owner = ownerFromActor(actor)
+  consumeMutation(owner, resolved.abs)
+  markTurnEdited(owner, resolved.abs)
+  return { owner, abs: resolved.abs }
+}
+
+/** Cancel a failed DSH edit/write without leaving it in turn repair scope. */
+export async function cancelToolMutation(displayPath: string | undefined, actor: unknown): Promise<void> {
+  if (!displayPath) return
+  const resolved = await resolveObservedFile(displayPath, actor)
+  if (!resolved) return
+  cancelMutation(ownerFromActor(actor), resolved.abs)
+}
+
 /**
  * Mark a mutation after fs/observed. The boolean tells callers whether the
  * event was tied to a modern intent hook or is a legacy/hand-test event.
@@ -78,5 +101,6 @@ export function finishObservedMutation(
   const owner = ownerFromActor(actor)
   const abs = path.resolve(actorCwd(actor) ?? process.cwd(), displayPath)
   const mutation = consumeMutation(owner, abs)
+  if (mutation) markTurnEdited(owner, abs)
   return { owner, abs, mutation }
 }
