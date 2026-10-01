@@ -2,6 +2,25 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## Unreleased
+
+- **fix(compat):** widen the `@deepseek-ai/dsh-tools` peer range from
+  `>=0.1.0-rc.1 <0.2.0-0` to the family's four-clause union
+  `>=0.1.2-rc.1 <0.2.0 || >=0.1.5-alpha.1 <0.2.0 || >=0.1.6-0 <0.2.0 || >=0.1.7-0 <0.3.0-0`.
+  Since dsh `0.2.0-rc.2` the plugin loader evaluates every `@deepseek-ai/dsh*`
+  peer with `semver.satisfies(runtimeVersion, requirement, { includePrerelease:
+  true })` and rejects the install when the runtime does not satisfy the range;
+  prerelease `0.2.0-rc.2` sits below the old `<0.2.0-0` bound, so the plugin
+  could not install on the current desktop line. The first three clauses admit
+  every host line the old range admitted, and the `<0.3.0-0` upper bound keeps
+  the last clause closed against a future `0.3.0` line. The dev/test pin moves
+  from `0.1.0-rc.8` to `0.1.7-rc.2`, matching the last clause's floor so the
+  suite executes the host packages the declared range targets.
+- **fix(lockfile):** drop the stale `.tmp/dsh-lint-loop-smoke` importer (and
+  its unused dependencies) that `pnpm install --frozen-lockfile` on CI trips
+  over: `ERR_PNPM_OUTDATED_LOCKFILE ... not up to date with
+  <ROOT>/.tmp/dsh-lint-loop-smoke/package.json`.
+
 ## 0.5.0 — 2026-09-27
 
 Regression-aware self-repair: one bounded Agent call repairs only lint
