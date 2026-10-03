@@ -39,7 +39,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.1 <0.2.0-0"
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.1 <0.2.0-0 || >=0.2.0-0 <0.3.0-0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {
@@ -47,7 +47,8 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.8",
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
     "@types/node": "^26.2.0",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
@@ -66,3 +67,4 @@
     "url": "https://github.com/lemonxiny55/dsh-lint-loop/issues"
   }
 }
+

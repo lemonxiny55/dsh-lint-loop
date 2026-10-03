@@ -2,6 +2,24 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## Unreleased
+
+- **fix(compat):** preserve the existing `@deepseek-ai/dsh-tools` support
+  range `>=0.1.0-rc.1 <0.2.0-0` and add
+  `>=0.2.0-0 <0.3.0-0` for the dsh 0.2.0 host line. Since dsh `0.2.0-rc.2`
+  the plugin loader evaluates `@deepseek-ai/dsh*` peers with
+  `semver.satisfies(runtimeVersion, requirement, { includePrerelease: true })`;
+  `0.2.0-rc.2` is below the old `<0.2.0-0` bound, so it was rejected. Keeping
+  the original clause retains support for older 0.1.0/0.1.1 and subsequent
+  0.1.x versions; the new clause admits 0.2.0 prereleases and stable while
+  `<0.3.0-0` excludes a future 0.3.0 line. The test pins use
+  `@deepseek-ai/dsh-tools@0.1.7-rc.2` and `@deepseek-ai/cordis@~4.0.4` to meet
+  the updated package's peer requirements.
+- **fix(lockfile):** remove the stale `.tmp/dsh-lint-loop-smoke` importer and
+  its now-unused ESLint dependency graph. The fixture is local-only and is not
+  part of the repository's tracked workspace, so a clean CI checkout does not
+  contain its `package.json`.
+
 ## 0.5.0 — 2026-09-27
 
 Regression-aware self-repair: one bounded Agent call repairs only lint
@@ -92,3 +110,4 @@ Initial release — the edit → lint → fix loop for dsh agents.
 - **feat(config):** `autoInject` / `maxFindings` / `linters` / `linterPath` / `sectionTtlMs` / `timeoutMs`, merged over defaults with input coercion; `linterPath` overrides ending in `.js/.mjs/.cjs` run under the current Node (the seam the test fakes use).
 - **test:** 72 vitest cases against a marker-driven fake linter (`// lint: <severity> <rule> <message>`, emitting each real linter's JSON shape) — detection/routing (three suffix families, dual-config coexistence, forced sets), parse shapes (real-captured biome 2.5.12 output regression-tested), caps and truncation notes, timeout degradation, `lint_fix` before/after diffs, config-change re-probing, missing-binary install hints, serial-lane ordering, and mount/dispose/remount lifecycle. No real linter required in CI.
 - **chore:** ESM + tsup (`dts: false`), Node ≥ 22 engines, MIT, bilingual README, GitHub Actions CI (Node 22/24 matrix). Verified against real eslint 10.x, biome 2.5.x, and ruff 0.16.x via `scripts/probe-linter.mjs`.
+
