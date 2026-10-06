@@ -2,7 +2,11 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
-## Unreleased
+## 0.5.1 — 2026-10-06
+
+Thanks to **heptaspirit (David Wong)** for identifying and fixing compatibility
+with the DSH 0.2 host line. His original commit is retained in the release
+history, followed by the maintainer compatibility and Cordis peer alignment.
 
 - **fix(compat):** preserve the existing `@deepseek-ai/dsh-tools` support
   range `>=0.1.0-rc.1 <0.2.0-0` and add
