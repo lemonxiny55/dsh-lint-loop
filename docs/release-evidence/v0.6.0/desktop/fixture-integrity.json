@@ -1,0 +1,22 @@
+{
+  "verifiedFiles": [
+    "src/a.js",
+    "src/legacy.js",
+    "src/b.js",
+    "tests/a.test.js",
+    "tests/b.test.js"
+  ],
+  "originalBytesPreserved": true,
+  "fullReceiptCounts": {
+    "new": 0,
+    "historical": 3,
+    "autoFixed": 1,
+    "agentFixed": 2,
+    "repairRounds": 1
+  },
+  "automaticGate": {
+    "continuationRounds": 1,
+    "agentFixed": 1,
+    "finalVerdict": "clean"
+  }
+}

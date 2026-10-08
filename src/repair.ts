@@ -1,11 +1,13 @@
 /** Turn-scoped, regression-only auto-repair orchestration. */
 
 import path from 'node:path'
-import { turnEditedFiles, classifyFindings, type BaselineOwner } from './baseline.js'
+import { turnEditedFiles, classifyFindings, hasAuthoritativeBaseline, type BaselineOwner } from './baseline.js'
 import type { Finding } from './findings.js'
 import { matchFindings } from './findings.js'
 import { managerForRoot, type BatchFixResult } from './manager.js'
 import { normalizeDrive } from './workspace.js'
+import { recordQualityRepair, qualityRepairRounds } from './quality.js'
+import { getConfig } from './config.js'
 
 export const REPAIR_MAX_ROUNDS = 2
 
@@ -22,7 +24,7 @@ export interface RepairReceipt {
   fixerIntroducedRegressions: Finding[]
   fixerErrors: string[]
   preExistingIssuesIgnored: Finding[]
-  stoppedBecause: 'clean' | 'no-progress' | 'round-limit' | 'no-turn-files'
+  stoppedBecause: 'clean' | 'no-progress' | 'round-limit' | 'no-turn-files' | 'cancelled' | 'timeout' | 'baseline-unavailable'
 }
 
 function regressionSet(root: string, owner: BaselineOwner | undefined, current: Map<string, Finding[]>): Finding[] {
@@ -46,7 +48,10 @@ function isUnder(file: string, dir: string): boolean {
 }
 
 /** Repair only introduced/changed findings against the current turn's baseline. */
-export async function repairTurn(root: string, owner: BaselineOwner | undefined): Promise<RepairReceipt> {
+export async function repairTurn(root: string, owner: BaselineOwner | undefined, signal?: AbortSignal): Promise<RepairReceipt> {
+  const callerSignal = signal
+  const timeoutSignal = AbortSignal.timeout(getConfig().qualityTimeoutMs)
+  signal = AbortSignal.any([timeoutSignal, ...(signal ? [signal] : [])])
   const normalizedRoot = path.resolve(root)
   const manager = managerForRoot(normalizedRoot)
   const files = turnEditedFiles(owner).filter((abs) => {
@@ -59,8 +64,13 @@ export async function repairTurn(root: string, owner: BaselineOwner | undefined)
     preExistingIssuesIgnored: [], stoppedBecause,
   })
   if (files.length === 0) return empty('no-turn-files')
+  if (files.some((file) => !hasAuthoritativeBaseline(owner, file))) return {
+    ...empty('baseline-unavailable'), affectedFiles: files.map((file) => toRelative(normalizedRoot, file)),
+    skippedFixers: ['pre-edit lint baseline unavailable; no safe repair attribution'],
+  }
 
-  const original = await manager.lintMany(files)
+  if (signal?.aborted) throw new Error('repair cancelled')
+  const original = await manager.lintMany(files, signal)
   const regressionsFound = regressionSet(normalizedRoot, owner, original)
   const preExistingIssuesIgnored = [...original].flatMap(([abs, findings]) =>
     classifyFindings(owner, abs, findings).preexisting,
@@ -73,12 +83,13 @@ export async function repairTurn(root: string, owner: BaselineOwner | undefined)
   const fixerErrors: string[] = []
   const skippedFixers: string[] = []
   let rounds = 0
+  const availableRounds = Math.max(0, REPAIR_MAX_ROUNDS - qualityRepairRounds(root, owner))
   let stoppedBecause: RepairReceipt['stoppedBecause'] = remaining.length === 0 ? 'clean' : 'round-limit'
 
-  while (remaining.length > 0 && rounds < REPAIR_MAX_ROUNDS) {
+  while (remaining.length > 0 && rounds < availableRounds && !signal?.aborted) {
     const candidateFiles = [...new Set(remaining.map((finding) => path.resolve(normalizedRoot, finding.file)))]
     rounds++
-    const results = await manager.fixMany(candidateFiles, remaining)
+    const results = await manager.fixMany(candidateFiles, remaining, signal)
     for (const result of results) {
       const { before, after, fixerIntroducedRegressions: introducedByFixer, ...run } = result
       allRuns.push(run)
@@ -95,7 +106,7 @@ export async function repairTurn(root: string, owner: BaselineOwner | undefined)
       for (const file of [...run.modifiedFiles, ...run.changedFiles, ...run.rolledBackFiles]) affected.add(file)
       fixerIntroduced.push(...introducedByFixer)
     }
-    current = await manager.lintMany(files)
+    current = await manager.lintMany(files, signal)
     const next = regressionSet(normalizedRoot, owner, current)
     if (next.length === 0) {
       remaining = []
@@ -113,8 +124,10 @@ export async function repairTurn(root: string, owner: BaselineOwner | undefined)
   }
 
   const finalRegression = regressionSet(normalizedRoot, owner, current)
+  if (signal.aborted) stoppedBecause = callerSignal?.aborted ? 'cancelled' : 'timeout'
   const resolved = matchFindings(regressionsFound, finalRegression).unmatchedPrevious
     .map((index) => regressionsFound[index])
+  recordQualityRepair(root, owner, resolved, rounds)
   return {
     scope: 'turn',
     rounds,

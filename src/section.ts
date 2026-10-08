@@ -10,7 +10,7 @@
  */
 
 import path from 'node:path'
-import { classifyFindings, ensureBaseline, hasBaseline, type BaselineOwner } from './baseline.js'
+import { classifyFindings, ensureBaseline, hasBaseline, hasAuthoritativeBaseline, type BaselineOwner } from './baseline.js'
 import { getConfig } from './config.js'
 import { capFindings, matchFindings, sortFindings, type Finding } from './findings.js'
 import { linterFamilyForExt, extOf } from './linters.js'
@@ -82,7 +82,7 @@ export function createLintSection(): LintSection {
           if (!abs) continue
           const findings = results.get(abs) ?? manager.findingsFor(abs)
           const delta = classifyFindings(owner, abs, findings)
-          const candidates = [...delta.introduced, ...delta.changed]
+          const candidates = owner !== undefined && !hasAuthoritativeBaseline(owner, abs) ? [] : [...delta.introduced, ...delta.changed]
           const previousCurrent = lastCurrent.find((entry) => entry.abs === abs && entry.owner === owner)?.findings ?? []
           const repeated = new Set(matchFindings(previousCurrent, candidates).matches.map((match) => match.current))
           for (const [index, finding] of candidates.entries()) {

@@ -1,0 +1,90 @@
+v22.23.3
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+. prepare$ tsup
+. prepare: CLI Building entry: src/index.ts
+. prepare: CLI Using tsconfig: tsconfig.json
+. prepare: CLI tsup v8.5.1
+. prepare: CLI Using tsup config: D:\ChatGPTProjects\dsh-lint-loop\tsup.config.ts
+. prepare: CLI Target: node22
+. prepare: CLI Cleaning output folder
+. prepare: ESM Build start
+. prepare: ESM dist\index.js     125.60 KB
+. prepare: ESM dist\index.js.map 274.31 KB
+. prepare: ESM ⚡️ Build success in 30ms
+. prepare: Done
+Done in 975ms using pnpm v10.32.1
+
+> dsh-lint-loop@0.6.0 typecheck D:\ChatGPTProjects\dsh-lint-loop
+> tsc --noEmit
+
+
+> dsh-lint-loop@0.6.0 test D:\ChatGPTProjects\dsh-lint-loop
+> vitest run
+
+
+ RUN  v4.1.11 D:/ChatGPTProjects/dsh-lint-loop
+
+
+ Test Files  14 passed (14)
+      Tests  162 passed (162)
+   Start at  09:19:25
+   Duration  14.02s (transform 1.69s, setup 555ms, import 3.10s, tests 42.81s, environment 1ms)
+
+
+> dsh-lint-loop@0.6.0 build D:\ChatGPTProjects\dsh-lint-loop
+> tsup
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: D:\ChatGPTProjects\dsh-lint-loop\tsup.config.ts
+CLI Target: node22
+CLI Cleaning output folder
+ESM Build start
+ESM dist\index.js     125.60 KB
+ESM dist\index.js.map 274.31 KB
+ESM ⚡️ Build success in 27ms
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+[dsh-lint-loop] plugin unloaded
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+[dsh-lint-loop] plugin unloaded
+Compatibility smoke passed: dist/index.js; seven tools; native presenter; dispose/remount; v22.23.3
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+[dsh-lint-loop] plugin unloaded
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+[dsh-lint-loop] plugin unloaded
+Compatibility smoke passed: .cache/compat-02/index.js; seven tools; native presenter; dispose/remount; v22.23.3

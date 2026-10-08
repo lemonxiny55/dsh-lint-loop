@@ -61,7 +61,7 @@ export {
   type BaselineOwner,
   type FindingDelta,
 } from './baseline.js'
-export { handleTurnStopping, markDirty, steeringCountFor, clearGateState, type TurnStoppingPayload } from './gate.js'
+export { handleTurnStopping, handleTurnEnded, markDirty, steeringCountFor, clearGateState, type TurnStoppingPayload } from './gate.js'
 export {
   LINTER_KEYS,
   linterFamilyForExt,
@@ -76,15 +76,18 @@ export { createLintSection } from './section.js'
 export { REPAIR_MAX_ROUNDS, repairStatus, repairTurn, type RepairReceipt } from './repair.js'
 export { tools } from './tools.js'
 export { findRepoRoot } from './workspace.js'
+export { verifyQuality, qualityReceipt, prepareQualityBaseline, type QualityReceipt, type QualityStatus } from './quality.js'
+export { discoverQualityPlan, selectImpactedTests, staticImpactProvider, type ImpactProvider, type TestSelection } from './quality-plan.js'
 
 import { applyConfig, getConfig, type PluginConfig } from './config.js'
 import { ownerFromActor } from './baseline.js'
 import { invalidateProbes, isLinterConfigBasename } from './detect.js'
 import { clearFrameCache } from './frames.js'
-import { clearGateState, handleTurnStopping, markDirty, type TurnStoppingPayload } from './gate.js'
+import { clearGateState, handleTurnEnded, handleTurnStopping, markDirty, type TurnStoppingPayload } from './gate.js'
 import { disposeAllManagers } from './manager.js'
 import { createLintSection } from './section.js'
 import { tools } from './tools.js'
+import { disposeQuality } from './quality.js'
 import {
   cancelToolMutation,
   finishObservedMutation,
@@ -121,6 +124,13 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
     }
 
     if (typeof ctx.on === 'function') {
+      const offEnded = ctx.on('session/event', (...args: unknown[]) => {
+        const session = args[0]
+        const event = args[1] as { type?: string } | undefined
+        if (session && typeof session === 'object' && event?.type === 'turn/end') handleTurnEnded(session)
+      }) as (() => void) | undefined
+      if (offEnded) disposers.push(offEnded)
+
       const onToolExecute = async (...args: unknown[]): Promise<unknown> => {
         const execution = args[0] as { name?: string; arguments?: unknown } | undefined
         const next = args[1]
@@ -242,6 +252,7 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
         }
       }
       clearGateState()
+      disposeQuality()
       clearFrameCache()
       void disposeAllManagers().catch((error) => {
         console.log(`[dsh-lint-loop] store cleanup error: ${(error as Error).message}`)

@@ -1,0 +1,56 @@
+[
+  {
+    "type": "agent/inbox/spliced",
+    "seq": 54,
+    "time": 1791422483561,
+    "data": {
+      "target": "next-step",
+      "start": 0,
+      "inserted": [
+        {
+          "id": "32909de5-786d-4ffe-ade5-de87a8b93248",
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "quality: this turn cannot finish cleanly — 1 new regression(s).\ntests:.: tests/a.test.js|a|AssertionError: expected 2 to be 1 // Object.is equality\nFix only this turn's regressions (lint_repair performs safe autofix), then finish. Use quality_receipt for evidence. Continuation 1/2."
+            }
+          ],
+          "source": {
+            "kind": "dsh-lint-loop"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "user/message",
+    "seq": 58,
+    "time": 1791422484099,
+    "data": {
+      "id": "32909de5-786d-4ffe-ade5-de87a8b93248",
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "quality: this turn cannot finish cleanly — 1 new regression(s).\ntests:.: tests/a.test.js|a|AssertionError: expected 2 to be 1 // Object.is equality\nFix only this turn's regressions (lint_repair performs safe autofix), then finish. Use quality_receipt for evidence. Continuation 1/2."
+        }
+      ],
+      "source": {
+        "kind": "dsh-lint-loop"
+      }
+    },
+    "surfaceOp": "append"
+  },
+  {
+    "type": "turn/end",
+    "seq": 87,
+    "time": 1791422510093,
+    "data": {
+      "turn": 2,
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  }
+]

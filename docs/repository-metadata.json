@@ -1,0 +1,1 @@
+{"description":"The change-aware quality loop for DeepSeek Harness. Fix what the agent broke. Ignore what was already broken. Prove the change is clean.","topics":["dsh","dsh-plugin","deepseek-harness","coding-agent","quality-loop","quality-gate","regression-aware","impacted-tests","typecheck","quality-receipt","developer-tools"]}

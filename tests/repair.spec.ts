@@ -176,7 +176,7 @@ describe('lint_repair turn scope', () => {
     expect(classifyFindings(session, edited, current).preexisting.map((f) => f.rule)).toEqual(['old-go'])
   })
 
-  it('reports every file changed by a safe package fixer batch', async () => {
+  it('skips package repair rather than allowing it to expand the agent change scope', async () => {
     const repo = await makeFixtureRepo()
     await repo.write('.golangci.yml', 'linters:\n  enable: []\n')
     const edited = await repo.write('main.go', 'package main\nvar value = 1\n')
@@ -189,11 +189,11 @@ describe('lint_repair turn scope', () => {
     process.env.FAKE_PACKAGE_TOUCH_OTHER = '1'
 
     const receipt = await repairTurn(repo.root, session)
-    expect(receipt.remaining).toEqual([])
-    expect(receipt.fixerRuns[0].modifiedFiles).toContain('main.go')
-    expect(receipt.fixerRuns[0].modifiedFiles).toContain('other.go')
-    expect(receipt.fixerRuns[0].changedFiles).toContain('other.go')
-    expect(receipt.affectedFiles).toContain('other.go')
-    expect(await readFile(neighbor, 'utf8')).toContain('touched by package fixer')
+    expect(receipt.remaining.map((f) => f.rule)).toEqual(['new-go'])
+    expect(receipt.fixerRuns[0].modifiedFiles).toEqual([])
+    expect(receipt.fixerRuns[0].changedFiles).toEqual([])
+    expect(receipt.fixerRuns[0].skippedBecause).toContain('cannot guarantee file-local scope')
+    expect(receipt.affectedFiles).toEqual(['main.go'])
+    expect(await readFile(neighbor, 'utf8')).toBe('package main\nvar other = 2\n')
   })
 })

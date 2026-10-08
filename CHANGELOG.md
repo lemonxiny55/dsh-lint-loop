@@ -2,6 +2,44 @@
 
 All notable changes to dsh-lint-loop are documented here.
 
+## 0.6.0 — Quality Loop (2026-10-08)
+
+Fix what the agent broke. Ignore what was already broken. Prove the change is
+clean. The regression-aware lint loop now verifies a coding agent's completed
+change against evidence captured before its edits, without demanding historical
+cleanup or pretending missing checks passed.
+
+The Fast Lane keeps compact lint deltas and safe file repair. The Completion
+Lane compares lint, package TypeScript diagnostics and impacted Vitest/Jest
+results to their original baselines. Uncertain dependencies widen test scope;
+unsupported, skipped, cancelled or unparsed checks remain incomplete. Every
+verification produces a Quality Receipt with actual commands, tests, debt,
+regressions, repairs, scope, budgets and verdict. Results use DSH's ordinary
+tool output. Pure Host presenters are retained for compatible consumers; the
+desktop/Web Quality Bar is deferred because the audited built-in client does
+not consume Host presentation descriptors. No client bundle or UI hack is added.
+
+`balanced` is the default; `fast` explicitly omits full checks, while `strict`
+runs repository package tests. Original configuration, eslint/biome/ruff and
+Node 22/24 remain supported. The 0.5.1 DSH 0.1/0.2 peer policy is unchanged.
+Continuations retain the whole turn's files and cannot reset the original
+baseline or repair budget. Automatic package/crate repair is now skipped when
+it cannot guarantee file-local scope; Go/Rust diagnostics and explicit fixer
+APIs remain available. This protects neighbors, manifests and historical debt.
+
+The durable turn/end boundary also clears accounting after model errors and
+cancellation, retaining the last receipt and cancelling pending checks. Safe
+semicolon formatting preserves type-diagnostic identity. Electron hosts launch
+the local Node tools in supported Node mode; unparsed reports retain bounded
+stdout/stderr evidence instead of silently claiming validation.
+Completion steering uses a producer-owned source kind accepted by DSH format v4.
+
+Validated with 162 automated tests, actual TypeScript/Vitest integration,
+live desktop tool and automatic-gate acceptance, and a native GUI smoke from
+task entry through receipt inspection. It is not an LLM reviewer, test-runner
+platform, coverage platform or CI replacement. See
+`docs/release-evidence/v0.6.0/verification.md` for the candidate evidence.
+
 ## 0.5.1 — 2026-10-06
 
 Thanks to **heptaspirit (David Wong)** for identifying and fixing compatibility

@@ -1,0 +1,30 @@
+{
+  "sessionId": "session-7977cc76-2c4e-46b8-86df-bb2979e2202e",
+  "seq": 89,
+  "time": 1791423136020,
+  "reason": {
+    "kind": "completed"
+  },
+  "calls": [
+    {
+      "seq": 17,
+      "name": "read"
+    },
+    {
+      "seq": 25,
+      "name": "edit"
+    },
+    {
+      "seq": 30,
+      "name": "read"
+    },
+    {
+      "seq": 50,
+      "name": "quality_verify"
+    },
+    {
+      "seq": 70,
+      "name": "quality_receipt"
+    }
+  ]
+}

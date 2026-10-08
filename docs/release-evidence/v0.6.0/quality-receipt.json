@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "mode": "balanced",
+  "root": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y",
+  "changedFiles": [
+    "src/a.ts"
+  ],
+  "newlyIntroducedRegressions": [
+    {
+      "check": "typecheck:.",
+      "identity": "src/a.ts|TS2322|Type 'string' is not assignable to type 'number'.|source:af176079a69a48cd"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.ts|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+    }
+  ],
+  "autoFixed": [],
+  "agentFixed": [],
+  "ignoredHistoricalDebt": [
+    {
+      "check": "typecheck:.",
+      "identity": "src/a.ts|TS2322|Type 'string' is not assignable to type 'number'.|source:9f480477ebacd090"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.ts|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+    }
+  ],
+  "lint": "clean",
+  "typecheck": "regression",
+  "tests": "regression",
+  "selection": {
+    "strategy": "dependency",
+    "files": [
+      "tests/a.test.ts"
+    ],
+    "reasons": [
+      "transitive reverse imports, including changed tests"
+    ],
+    "complete": true
+  },
+  "checksExecuted": [
+    {
+      "id": "lint:src/a.ts",
+      "kind": "lint",
+      "scope": "src/a.ts",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\tests\\helpers\\fakeLinter.mjs",
+        "--no-warn-ignored",
+        "-f",
+        "json",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\src\\a.ts"
+      ],
+      "status": "complete",
+      "issues": [],
+      "executed": [],
+      "elapsedMs": 80,
+      "invocations": [
+        {
+          "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+          "args": [
+            "D:\\ChatGPTProjects\\dsh-lint-loop\\tests\\helpers\\fakeLinter.mjs",
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\src\\a.ts"
+          ],
+          "cwd": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y"
+        }
+      ]
+    },
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.ts|TS2322|Type 'string' is not assignable to type 'number'.|source:af176079a69a48cd",
+        "src/a.ts|TS2322|Type 'string' is not assignable to type 'number'.|source:9f480477ebacd090"
+      ],
+      "executed": [],
+      "elapsedMs": 422,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\tests\\a.test.ts"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.ts|a|AssertionError: expected 'new' to be 1 // Object.is equality",
+        "tests/a.test.ts|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.ts|a",
+        "tests/a.test.ts|historical"
+      ],
+      "elapsedMs": 658,
+      "skipped": []
+    }
+  ],
+  "baselineChecks": [
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.ts|TS2322|Type 'string' is not assignable to type 'number'.|source:9f480477ebacd090"
+      ],
+      "executed": [],
+      "elapsedMs": 512,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-lint-loop-u1XT4y\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.ts|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.ts|a",
+        "tests/a.test.ts|historical",
+        "tests/b.test.ts|b"
+      ],
+      "elapsedMs": 764,
+      "skipped": []
+    }
+  ],
+  "repairRounds": 0,
+  "continuationRounds": 0,
+  "elapsedMs": 1169,
+  "finalVerdict": "regression",
+  "reasons": []
+}

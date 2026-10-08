@@ -1,0 +1,13 @@
+{
+  "verifiedFiles": [
+    "src/a.js",
+    "src/legacy.js",
+    "src/b.js",
+    "tests/a.test.js",
+    "tests/b.test.js"
+  ],
+  "onlyFixtureMutation": "one trailing blank line in src/a.js",
+  "historicalSourceAndTestsPreserved": true,
+  "teardown": "exact blank line restored after receipt capture",
+  "originalBytesRestored": true
+}

@@ -66,7 +66,10 @@ export interface FixResult {
   remaining: Finding[]
   /** Findings hidden by the tool-level cap (set by the tool, not the manager). */
   dropped: number
+  skippedBecause?: string
 }
+
+export interface LintExecution { command: string; args: string[]; cwd: string }
 
 export interface BatchFixResult {
   linter: LinterKey
@@ -134,11 +137,11 @@ export class LintManager {
    * Lint one file (serially queued per root+linter), store, and return the
    * fresh findings.
    */
-  async lintFile(absPath: string): Promise<Finding[]> {
+  async lintFile(absPath: string, signal?: AbortSignal, onRun?: (run: LintExecution) => void): Promise<Finding[]> {
     const linter = await this.requireLinter(absPath)
     const spec = LINTER_SPECS[linter]
     const target = await resolveRunTarget(spec, absPath, this.root)
-    const findings = await this.runLint(linter, target)
+    const findings = await this.runLint(linter, target, signal, onRun)
     this.replaceScope(linter, spec, target, [absPath], findings)
     await this.recordLines(absPath)
     return this.findingsFor(absPath)
@@ -151,7 +154,7 @@ export class LintManager {
    * gate and the injected section — treat a missing linter as "nothing to
    * report" rather than an error).
    */
-  async lintMany(absPaths: readonly string[]): Promise<Map<string, Finding[]>> {
+  async lintMany(absPaths: readonly string[], signal?: AbortSignal): Promise<Map<string, Finding[]>> {
     const groups = new Map<string, { linter: LinterKey; target: RunTarget; members: string[] }>()
     for (const absPath of absPaths) {
       let linter: LinterKey
@@ -173,7 +176,7 @@ export class LintManager {
       const spec = LINTER_SPECS[group.linter]
       let findings: Finding[] | null = null
       try {
-        findings = await this.runLint(group.linter, group.target)
+        findings = await this.runLint(group.linter, group.target, signal)
       } catch {
         // A failed run keeps the scope's previous findings rather than wiping them.
       }
@@ -187,7 +190,7 @@ export class LintManager {
   }
 
   /** Run one fixer per file/package/crate group and verify every result. */
-  async fixMany(absPaths: readonly string[], permittedFindings: readonly Finding[] = []): Promise<BatchFixResult[]> {
+  async fixMany(absPaths: readonly string[], permittedFindings: readonly Finding[] = [], signal?: AbortSignal): Promise<BatchFixResult[]> {
     const groups = new Map<string, { linter: LinterKey; target: RunTarget; members: string[] }>()
     for (const absPath of absPaths) {
       const linter = await this.requireLinter(absPath)
@@ -207,7 +210,7 @@ export class LintManager {
         const content = await readFile(file, 'utf8').catch(() => undefined)
         if (content !== undefined) snapshots.set(file, content)
       }
-      const before = await this.runLint(group.linter, group.target)
+      const before = await this.runLint(group.linter, group.target, signal)
       const allowedInScope = permittedFindings.filter((finding) =>
         isUnder(normalizeDrive(path.resolve(this.root, finding.file)), group.target.scopeDir),
       )
@@ -236,9 +239,18 @@ export class LintManager {
           continue
         }
       }
+      if (spec.scope !== 'file') {
+        // Package/crate fixers may also rewrite manifests, lockfiles and clean
+        // neighbors. A source-only snapshot cannot make that transactional.
+        results.push({ linter: group.linter, scope: path.relative(this.root, group.target.scopeDir) || '.',
+          attemptedFiles: group.members.map((file) => toRelative(file, this.root)), modifiedFiles: [], changedFiles: [],
+          rolledBackFiles: [], before, after: before, fixerIntroducedRegressions: [],
+          skippedBecause: 'package/crate fixer cannot guarantee file-local scope; broad fixer skipped' })
+        continue
+      }
       let runError: string | undefined
       try {
-        const outcome = await this.runWithFlagFallback(group.linter, spec.fixArgs, group.target)
+        const outcome = await this.runWithFlagFallback(group.linter, spec.fixArgs, group.target, signal)
         this.assertRunnable(group.linter, outcome)
       } catch (error) {
         runError = (error as Error).message ?? String(error)
@@ -255,7 +267,7 @@ export class LintManager {
       let error = runError
       let verificationSucceeded = false
       try {
-        after = await this.runLint(group.linter, group.target)
+        after = await this.runLint(group.linter, group.target, signal)
         verificationSucceeded = true
       } catch (verificationError) {
         error = [runError, `post-fix lint verification failed: ${(verificationError as Error).message ?? String(verificationError)}`]
@@ -271,7 +283,7 @@ export class LintManager {
         }
         after = []
         try {
-          after = await this.runLint(group.linter, group.target)
+          after = await this.runLint(group.linter, group.target, signal)
           verificationSucceeded = true
         } catch (retryError) {
           error += `; verification retry failed: ${(retryError as Error).message ?? String(retryError)}`
@@ -288,7 +300,7 @@ export class LintManager {
           await writeFile(file, original, 'utf8')
           rolledBackFiles.push(file)
             try {
-              after = await this.runLint(group.linter, group.target)
+              after = await this.runLint(group.linter, group.target, signal)
               this.replaceScope(group.linter, spec, group.target, group.members, after)
             } catch (rollbackError) {
               error = [error, `rollback verification failed: ${(rollbackError as Error).message ?? String(rollbackError)}`]
@@ -331,19 +343,28 @@ export class LintManager {
   }
 
   /** Auto-fix one file, then re-lint. Throws the same friendly errors as lintFile. */
-  async fixFile(absPath: string): Promise<FixResult> {
+  async fixFile(absPath: string, permittedFindings?: readonly Finding[], signal?: AbortSignal): Promise<FixResult> {
     const linter = await this.requireLinter(absPath)
     const spec = LINTER_SPECS[linter]
     const target = await resolveRunTarget(spec, absPath, this.root)
     const before = await readFile(absPath, 'utf8').catch(() => null)
 
-    const outcome = await this.runWithFlagFallback(linter, spec.fixArgs, target)
-    this.assertRunnable(linter, outcome)
+    let skippedBecause: string | undefined
+    if (permittedFindings) {
+      if (!permittedFindings.length) skippedBecause = 'no regressions in this turn'
+      else {
+        const results = await this.fixMany([absPath], permittedFindings, signal)
+        skippedBecause = results[0]?.skippedBecause ?? results[0]?.error
+      }
+    } else {
+      const outcome = await this.runWithFlagFallback(linter, spec.fixArgs, target, signal)
+      this.assertRunnable(linter, outcome)
+    }
 
     const after = await readFile(absPath, 'utf8').catch(() => null)
     const fixed = before !== null && after !== null && before !== after
     const diff = summarizeLineChanges(before ?? '', after ?? '')
-    const remaining = await this.lintFile(absPath)
+    const remaining = await this.lintFile(absPath, signal)
     return {
       file: toRelative(this.key(absPath), this.key(this.root)),
       linter,
@@ -352,12 +373,13 @@ export class LintManager {
       removedLines: diff.removed,
       remaining,
       dropped: 0,
+      ...(skippedBecause ? { skippedBecause } : {}),
     }
   }
 
-  private async runLint(linter: LinterKey, target: RunTarget): Promise<Finding[]> {
+  private async runLint(linter: LinterKey, target: RunTarget, signal?: AbortSignal, onRun?: (run: LintExecution) => void): Promise<Finding[]> {
     const spec = LINTER_SPECS[linter]
-    const outcome = await this.runWithFlagFallback(linter, spec.lintArgs, target)
+    const outcome = await this.runWithFlagFallback(linter, spec.lintArgs, target, signal, onRun)
     this.assertRunnable(linter, outcome)
     const findings = await parseFindingsFor(linter, outcome.stdout, this.root, target.baseDir)
     return this.attachSourceContext(findings)
@@ -437,35 +459,40 @@ export class LintManager {
     linter: LinterKey,
     baseArgs: string[],
     target: RunTarget,
+    signal?: AbortSignal,
+    onRun?: (run: LintExecution) => void,
   ): Promise<RunOutcome> {
     let args = target.arg === null ? [...baseArgs] : [...baseArgs, target.arg]
     if (linter === 'eslint' && !eslintFlagUsable(this.root)) {
       args = args.filter((arg) => arg !== '--no-warn-ignored')
     }
-    let outcome = await this.run(linter, args, target.cwd)
+    let outcome = await this.run(linter, args, target.cwd, signal, onRun)
     if (linter === 'eslint' && eslintFlagUsable(this.root) && isUnknownOptionFailure(outcome)) {
       noteEslintFlagUnsupported(this.root)
-      outcome = await this.run(linter, args.filter((arg) => arg !== '--no-warn-ignored'), target.cwd)
+      outcome = await this.run(linter, args.filter((arg) => arg !== '--no-warn-ignored'), target.cwd, signal, onRun)
     }
     if (linter === 'golangci' && args.includes(GOLANGCI_V2_JSON_FLAG) && isUnknownOptionFailure(outcome)) {
       outcome = await this.run(
         linter,
         args.map((arg) => (arg === GOLANGCI_V2_JSON_FLAG ? GOLANGCI_V1_JSON_FLAG : arg)),
         target.cwd,
+        signal,
+        onRun,
       )
     }
     return outcome
   }
 
-  private async run(linter: LinterKey, args: string[], cwd: string): Promise<RunOutcome> {
+  private async run(linter: LinterKey, args: string[], cwd: string, signal?: AbortSignal, onRun?: (run: LintExecution) => void): Promise<RunOutcome> {
     const spec = LINTER_SPECS[linter]
     const override = getConfig().linterPath[linter]
     const { command, args: finalArgs } = override
       ? resolveCommand(spec, override, args)
       : { command: await resolveRepoLocalBinary(this.root, spec.command), args }
-    return schedule(`${this.root}::${linter}`, () =>
-      runProcess(command, finalArgs, { cwd, timeoutMs: this.effectiveTimeout(linter) }),
-    )
+    return schedule(`${this.root}::${linter}`, () => {
+      onRun?.({ command, args: [...finalArgs], cwd })
+      return runProcess(command, finalArgs, { cwd, timeoutMs: this.effectiveTimeout(linter), signal })
+    }, signal)
   }
 
   /** The run timeout actually applied: the config value, floored by the linter's minimum. */
@@ -475,6 +502,8 @@ export class LintManager {
 
   /** Map a run outcome onto friendly errors; exit 0/1 means parseable output. */
   private assertRunnable(linter: LinterKey, outcome: RunOutcome): void {
+    if (outcome.cancelled) throw new Error(`linter "${linter}" cancelled`)
+    if (outcome.truncated) throw new Error(`linter "${linter}" output truncated`)
     if (outcome.timedOut) throw new LinterTimeoutError(linter, this.effectiveTimeout(linter))
     if (isMissingBinary(outcome)) throw new MissingLinterError(linter, outcome.stderr)
     if (outcome.spawnError) throw new MissingLinterError(linter, outcome.spawnError.message)
