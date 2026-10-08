@@ -1,184 +1,83 @@
-/**
- * Completion gate: at the turn-stopping boundary, if files edited during this
- * turn still carry lint errors, steer the agent for another step instead of
- * letting it finish.
- *
- * The harness `agent/turn-stopping` seam is a serial checkpoint with no
- * built-in loop guard (the first-party Claude Code bridge carries an explicit
- * TODO for exactly that), so this gate self-limits: a file is only considered
- * once per stopping, and each turn may force at most `gateMaxSteers`
- * continuations before admitting the turn.
- */
-
+/** Awaited Completion Lane checkpoint. A continuation retains the original turn scope. */
 import path from 'node:path'
-import {
-  clearAllBaselines,
-  clearBaseline,
-  classifyFindings,
-  ensureBaseline,
-  hasBaseline,
-  ownerFromAgent,
-  type BaselineOwner,
-} from './baseline.js'
+import { clearAllBaselines, clearBaseline, ownerFromAgent, type BaselineOwner } from './baseline.js'
 import { getConfig } from './config.js'
-import { renderFindings, sortFindings, type Finding } from './findings.js'
-import { linterFamilyForExt, extOf } from './linters.js'
-import { managerForRoot } from './manager.js'
+import { clearQualityTurn, disposeQuality, verifyQuality } from './quality.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 
-interface SteerableAgent {
-  id?: string
-  session?: object
-  steer(message: unknown): void
-}
-
-export interface TurnStoppingPayload {
-  agent: SteerableAgent
-  turn: number
-  signal?: unknown
-}
-
-/** Files observed (written/edited) since the last gate evaluation. */
+interface SteerableAgent { id?: string; session?: object; steer(message: unknown): void }
+export interface TurnStoppingPayload { agent: SteerableAgent; turn: number; signal?: AbortSignal }
 const dirty = new Set<string>()
 const dirtyByOwner = new Map<BaselineOwner, Set<string>>()
-/** Forced continuations per `${sessionId}::${turn}`. */
 const steers = new Map<string, number>()
+const turns = new Map<BaselineOwner, number>()
+const budgets = new Map<BaselineOwner, number>()
+const steerKeys = new Map<BaselineOwner, Set<string>>()
 
-function debug(...args: unknown[]): void {
-  if (process.env.DSH_LINT_DEBUG === '1') console.log('[dsh-lint-loop][debug]', ...args)
+/** Durable turn/end also fires for errors and cancellation, which bypass stopping. */
+export function handleTurnEnded(session: object): void {
+  const owner = ownerFromAgent({ session })
+  if (!owner) return
+  dirtyByOwner.delete(owner)
+  clearBaseline(owner)
+  clearQualityTurn(owner)
+  for (const key of steerKeys.get(owner) ?? []) steers.delete(key)
+  steerKeys.delete(owner)
+  turns.delete(owner)
+  budgets.delete(owner)
 }
 
-/** Queue a file from an fs/observed event. Synchronous, never throws. */
 export function markDirty(displayPath: string | undefined, owner?: BaselineOwner): void {
-  try {
-    if (displayPath) {
-      debug('markDirty', displayPath)
-      if (owner) {
-        const files = dirtyByOwner.get(owner) ?? new Set<string>()
-        files.add(displayPath)
-        dirtyByOwner.set(owner, files)
-      } else {
-        dirty.add(displayPath)
-      }
-    }
-  } catch {
-    // fs/observed listeners must be infallible.
-  }
+  if (!displayPath) return
+  if (!owner) { dirty.add(displayPath); return }
+  const files = dirtyByOwner.get(owner) ?? new Set<string>()
+  files.add(displayPath)
+  dirtyByOwner.set(owner, files)
 }
-
-/** Lint every queued file (one run per package) and collect the gated severity. */
-async function collectErrors(files: readonly string[], owner: BaselineOwner | undefined): Promise<Finding[]> {
-  const config = getConfig()
-  const byRoot = new Map<string, string[]>()
-  for (const displayPath of files) {
-    const root = await findRepoRoot(path.dirname(displayPath))
-    if (!root) continue
-    const abs = resolveFileInRoot(root, displayPath)
-    if (!abs || !linterFamilyForExt(extOf(abs))) continue
-    const list = byRoot.get(root) ?? []
-    list.push(abs)
-    byRoot.set(root, list)
-  }
-  const out: Finding[] = []
-  for (const [root, absPaths] of byRoot) {
-    try {
-      const manager = managerForRoot(root)
-      for (const abs of absPaths) {
-        // The owner-less path is the pre-0.4 integration seam: markDirty()
-        // means "a mutation just happened", so its fallback baseline starts
-        // empty. Modern DSH captures pre-edit findings in the tools/execute wrapper.
-        if (!hasBaseline(owner, abs)) ensureBaseline(owner, abs, owner ? manager.findingsFor(abs) : [])
-      }
-      const results = await manager.lintMany(absPaths)
-      for (const abs of absPaths) {
-        const delta = classifyFindings(owner, abs, results.get(abs) ?? manager.findingsFor(abs))
-        for (const finding of [...delta.introduced, ...delta.changed]) {
-          if (finding.severity === config.gateSeverity) out.push(finding)
-        }
-      }
-    } catch {
-      // No linter configured / unexpected failure: nothing to gate on.
-    }
-  }
-  return out
-}
-
-function renderGateText(errors: readonly Finding[]): string {
-  const config = getConfig()
-  const sorted = sortFindings(errors)
-  const shown = sorted.slice(0, config.maxFindings)
-  const body = renderFindings(shown, sorted.length - shown.length)
-  return (
-    `lint: this turn cannot finish cleanly — ${sorted.length} error${sorted.length === 1 ? '' : 's'} `
-    + `remain in file${new Set(sorted.map((f) => f.file)).size === 1 ? '' : 's'} you edited.\n`
-    + `${body}\n`
-    + '(fix them (lint_fix repairs what it can), then finish — this nudge is capped per turn)'
-  )
-}
-
-function createSteerMessage(text: string): unknown {
-  return {
-    id: crypto.randomUUID(),
-    role: 'user',
-    content: [{ type: 'text', text }],
-    source: { kind: 'plugin', plugin: 'dsh-lint-loop' },
-  }
-}
-
-/**
- * Handle the turn-stopping boundary. Never throws — a gate failure must not
- * break the turn. Returns the text it steered with, for tests.
- */
 export async function handleTurnStopping(payload: TurnStoppingPayload): Promise<string | undefined> {
   try {
-    const config = getConfig()
     const owner = ownerFromAgent(payload.agent)
     const owned = owner ? dirtyByOwner.get(owner) : undefined
-    const files = [...new Set([...dirty, ...(owned ? [...owned] : [])])]
-    // A legacy caller can still use the public markDirty(path) seam without
-    // an actor/session. Keep that path on the global baseline instead of
-    // accidentally treating the manager's current findings as pre-existing.
     const trackingOwner = owned ? owner : undefined
-    dirty.clear()
-    if (owned && owner) dirtyByOwner.delete(owner)
-    debug('turn-stopping', 'gate=', config.gate, 'maxSteers=', config.gateMaxSteers, 'dirtyFiles=', files.length)
-    if (!config.gate || config.gateMaxSteers <= 0) {
-      clearBaseline(trackingOwner, files)
-      return undefined
+    const identity = owner ?? 'gate:global'
+    const oldTurn = turns.get(identity)
+    if (oldTurn !== undefined && oldTurn !== payload.turn) { steers.delete(`${payload.agent.id ?? 'session'}::${oldTurn}`); budgets.delete(identity) }
+    turns.set(identity, payload.turn)
+    const files = [...new Set([...dirty, ...(owned ?? [])])]
+    if (!files.length) return undefined
+    const byRoot = new Map<string, string[]>()
+    for (const file of files) {
+      const root = await findRepoRoot(path.dirname(file))
+      const abs = root && resolveFileInRoot(root, file)
+      if (!root || !abs) continue
+      const group = byRoot.get(root) ?? []
+      group.push(abs); byRoot.set(root, group)
     }
-    if (files.length === 0) return undefined
-
-    const errors = await collectErrors(files, trackingOwner)
-    debug('turn-stopping errors=', errors.length)
-    if (errors.length === 0) {
-      clearBaseline(trackingOwner, files)
-      return undefined
-    }
-
+    const config = getConfig()
+    const used = budgets.get(identity) ?? 0
+    const receipts = []
+    for (const [root, group] of byRoot) receipts.push(await verifyQuality(root, trackingOwner, { files: group, signal: payload.signal, continuationRounds: used, continuationLimit: config.gateMaxSteers }))
+    const regressions = receipts.flatMap((r) => r.newlyIntroducedRegressions)
     const key = `${payload.agent.id ?? 'session'}::${payload.turn}`
-    const used = steers.get(key) ?? 0
-    if (used >= config.gateMaxSteers) {
-      clearBaseline(trackingOwner, files)
-      return undefined
+    const maySteer = config.gate && used < config.gateMaxSteers && !payload.signal?.aborted
+    if (regressions.length && maySteer) {
+      steers.set(key, used + 1)
+      const keys = steerKeys.get(identity) ?? new Set<string>()
+      keys.add(key); steerKeys.set(identity, keys)
+      budgets.set(identity, used + 1)
+      const body = regressions.slice(0, config.maxFindings).map((r) => `${r.check}: ${r.identity}`).join('\n')
+      const text = `quality: this turn cannot finish cleanly — ${regressions.length} new regression(s).\n${body}\nFix only this turn's regressions (lint_repair performs safe autofix), then finish. Use quality_receipt for evidence. Continuation ${used + 1}/${config.gateMaxSteers}.`
+      payload.agent.steer({ id: crypto.randomUUID(), role: 'user', content: [{ type: 'text', text }], source: { kind: 'dsh-lint-loop' } })
+      return text
     }
-    steers.set(key, used + 1)
-
-    const text = renderGateText(errors)
-    payload.agent.steer(createSteerMessage(text))
-    return text
-  } catch {
+    dirty.clear()
+    if (owner) dirtyByOwner.delete(owner)
+    clearBaseline(trackingOwner)
+    clearQualityTurn(trackingOwner)
     return undefined
-  }
+  } catch { return undefined }
 }
-
-/** Test/manual seam for the per-turn counter. */
-export function steeringCountFor(sessionId: string, turn: number): number {
-  return steers.get(`${sessionId}::${turn}`) ?? 0
-}
-
+export function steeringCountFor(sessionId: string, turn: number): number { return steers.get(`${sessionId}::${turn}`) ?? 0 }
 export function clearGateState(): void {
-  dirty.clear()
-  dirtyByOwner.clear()
-  steers.clear()
-  clearAllBaselines()
+  dirty.clear(); dirtyByOwner.clear(); steers.clear(); steerKeys.clear(); turns.clear(); budgets.clear(); clearAllBaselines(); disposeQuality()
 }

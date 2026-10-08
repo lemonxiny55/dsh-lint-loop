@@ -42,6 +42,8 @@ describe('handleTurnStopping (completion gate)', () => {
     const text = await handleTurnStopping({ agent, turn: 1 })
 
     expect(agent.steers).toHaveLength(1)
+    // DSH format v4 rejects the retired generic `plugin` source kind.
+    expect((agent.steers[0] as { source: unknown }).source).toEqual({ kind: 'dsh-lint-loop' })
     expect(text).toContain('cannot finish cleanly')
     expect(text).toContain('no-unused-vars')
     expect(String((agent.steers[0] as { content: Array<{ text: string }> }).content[0].text)).toContain('cannot finish cleanly')

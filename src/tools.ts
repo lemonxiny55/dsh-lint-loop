@@ -7,6 +7,7 @@ import {
   classifyWithoutBaseline,
   ensureBaseline,
   hasBaseline,
+  hasAuthoritativeBaseline,
   ownerFromActor,
   turnEditedFiles,
   type BaselineOwner,
@@ -27,6 +28,8 @@ import { markDirty } from './gate.js'
 import { LintManager, managerForRoot, type FixResult } from './manager.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 import { repairStatus, repairTurn } from './repair.js'
+import { qualityReceipt, verifyQuality, recordQualityRepair } from './quality.js'
+import { qualityCallView, qualityResultView } from './quality-view.js'
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 
@@ -173,6 +176,7 @@ function fixResultToCanonical(result: FixResult): Record<string, JsonValue> {
     fixed: result.fixed,
     changedLines: { added: result.addedLines, removed: result.removedLines },
     remaining,
+    ...(result.skippedBecause ? { skippedBecause: result.skippedBecause } : {}),
   }
 }
 
@@ -204,6 +208,30 @@ function currentFindingsByFile(root: string, findings: readonly Finding[]): Map<
 }
 
 export const tools = [
+  defineTool({
+    name: 'quality_verify',
+    presentCall: qualityCallView,
+    presentResult: qualityResultView,
+    description: 'Completion Lane: verify this turn\'s changed files against pre-edit lint/typecheck/test baselines. Returns a Quality Receipt with actual commands, affected tests, debt, regressions and incomplete checks. Does not modify files.',
+    parameters: { repoRoot: { type: 'string', description: 'Optional repository root; defaults to the session workspace.' } },
+    output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value: Record<string, JsonValue>): TextBlock[] => [{ type: 'text', text: JSON.stringify(value, null, 2) }] },
+    async execute(args: { repoRoot?: string }, exec: ToolRunExec): Promise<Record<string, JsonValue>> {
+      try { return await verifyQuality(await resolveRoot(args.repoRoot, exec), ownerForExec(exec), { signal: exec.signal }) as unknown as Record<string, JsonValue> }
+      catch (error) { return { error: friendlyMessage(error) } }
+    },
+  }),
+  defineTool({
+    name: 'quality_receipt',
+    presentCall: () => ({ card: 'generic', kind: 'read', title: 'Quality · last receipt' }),
+    presentResult: qualityResultView,
+    description: 'Read the last Quality Receipt for this session/repository, including verification scope and limitations. Runs no checks.',
+    parameters: { repoRoot: { type: 'string', description: 'Optional repository root.' } },
+    output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value: Record<string, JsonValue>): TextBlock[] => [{ type: 'text', text: JSON.stringify(value, null, 2) }] },
+    async execute(args: { repoRoot?: string }, exec: ToolRunExec): Promise<Record<string, JsonValue>> {
+      try { return (qualityReceipt(await resolveRoot(args.repoRoot, exec), ownerForExec(exec)) ?? { note: 'No completion verification has run for this session.' }) as unknown as Record<string, JsonValue> }
+      catch (error) { return { error: friendlyMessage(error) } }
+    },
+  }),
   defineTool({
     name: 'lint_status',
     description: 'Show this turn\'s lint repair status: introduced/changed regressions and pre-existing findings ignored by the repair loop.',
@@ -274,7 +302,7 @@ export const tools = [
         if (args.scope !== 'turn') return { error: 'scope "turn" is required' }
         const root = await resolveRoot(args.repoRoot, exec)
         const owner = ownerForExec(exec)
-        const receipt = await repairTurn(root, owner)
+        const receipt = await repairTurn(root, owner, exec.signal)
         for (const file of turnEditedFiles(owner)) markDirty(file, owner)
         return {
           ...receipt,
@@ -465,6 +493,8 @@ export const tools = [
         const manager: LintManager = managerForRoot(root)
         const owner = ownerForExec(exec)
         let beforeFix: Finding[]
+        const alreadyTracked = hasBaseline(owner, abs)
+        if (alreadyTracked && !hasAuthoritativeBaseline(owner, abs)) return { error: 'pre-edit lint baseline unavailable; safe repair cannot attribute regressions' }
         // A direct lint_fix call has no earlier lint result to use as a
         // baseline. Establish one before the fixer runs; the post-fix lint is
         // then compared to this snapshot, and the fixer cannot reset it.
@@ -477,10 +507,12 @@ export const tools = [
           // lint_fix is about to rewrite.
           beforeFix = await manager.lintFile(abs)
         }
-        const result = await manager.fixFile(abs)
+        const beforeDelta = classifyFindings(owner, abs, beforeFix)
+        const result = await manager.fixFile(abs, alreadyTracked ? [...beforeDelta.introduced, ...beforeDelta.changed] : undefined, exec.signal)
         const delta = classifyFindings(owner, abs, result.remaining)
         const fixDiff = matchFindings(beforeFix, result.remaining)
         const resolved = fixDiff.unmatchedPrevious.map((index) => ({ ...beforeFix[index], scope: 'resolved' as const }))
+        recordQualityRepair(root, owner, resolved.filter((f) => [...beforeDelta.introduced, ...beforeDelta.changed].some((candidate) => candidate.rule === f.rule && candidate.message === f.message)), result.fixed ? 1 : 0)
         // lint_fix rewrites via the linter process, which bypasses the fs tool
         // and its fs/observed event — re-arm the gate so the post-fix state is
         // re-checked at the turn boundary.

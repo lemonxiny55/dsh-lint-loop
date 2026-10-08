@@ -84,6 +84,10 @@ export function hasBaseline(owner: BaselineOwner | undefined, absPath: string): 
   return states.get(ownerKey(owner))?.has(fileKey(absPath)) ?? false
 }
 
+export function hasAuthoritativeBaseline(owner: BaselineOwner | undefined, absPath: string): boolean {
+  return states.get(ownerKey(owner))?.get(fileKey(absPath))?.authoritative ?? false
+}
+
 /** Mark a file confirmed through a successful DSH edit/write in this turn. */
 export function markTurnEdited(owner: BaselineOwner | undefined, absPath: string): void {
   const key = ownerKey(owner)

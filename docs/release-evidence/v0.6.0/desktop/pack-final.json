@@ -1,0 +1,51 @@
+[
+  {
+    "id": "dsh-lint-loop@0.6.0",
+    "name": "dsh-lint-loop",
+    "version": "0.6.0",
+    "size": 110719,
+    "unpackedSize": 427554,
+    "shasum": "3426d3dd16825469b7871a0e9b044979c5eca8f4",
+    "integrity": "sha512-S/cOwKsFQGQyiEUk0QelID5Siij5WAdIxRlf1leOHK9YNKgJgICCaXNQOVKmQhmrqd0/sKw72PV4/W6aVOO10A==",
+    "filename": "dsh-lint-loop-0.6.0.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1089,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 12583,
+        "mode": 420
+      },
+      {
+        "path": "README.zh.md",
+        "size": 5099,
+        "mode": 420
+      },
+      {
+        "path": "cordis.patch.yml",
+        "size": 210,
+        "mode": 420
+      },
+      {
+        "path": "dist/index.js",
+        "size": 127751,
+        "mode": 420
+      },
+      {
+        "path": "dist/index.js.map",
+        "size": 279151,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 1671,
+        "mode": 420
+      }
+    ],
+    "entryCount": 7,
+    "bundled": []
+  }
+]

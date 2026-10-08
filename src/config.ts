@@ -4,6 +4,15 @@ import type { Severity } from './findings.js'
 import { LINTER_KEYS, type LinterKey } from './linters.js'
 
 export interface PluginConfig {
+  /** Quality Loop preset. Advanced fields override the preset. */
+  mode?: 'fast' | 'balanced' | 'strict'
+  /** Completion checks; fast intentionally skips typecheck and tests. */
+  completionChecks?: boolean
+  /** Total budget for each baseline/completion sweep, including all packages. */
+  qualityTimeoutMs?: number
+  /** Bound repository discovery and the number of executed package checks. */
+  qualityMaxFiles?: number
+  qualityMaxChecks?: number
   /** Set false to disable the auto-injected findings section (and the fs/observed listener). */
   autoInject?: boolean
   /** Hard cap on findings surfaced by tools and the injected section (token-cost guard). */
@@ -35,6 +44,11 @@ export interface PluginConfig {
 }
 
 interface EffectiveConfig {
+  mode: 'fast' | 'balanced' | 'strict'
+  completionChecks: boolean
+  qualityTimeoutMs: number
+  qualityMaxFiles: number
+  qualityMaxChecks: number
   autoInject: boolean
   maxFindings: number
   linters: LinterKey[]
@@ -58,6 +72,11 @@ function asSeverity(value: Severity | undefined, fallback: Severity): Severity {
 }
 
 const DEFAULTS: EffectiveConfig = {
+  mode: 'balanced',
+  completionChecks: true,
+  qualityTimeoutMs: 60_000,
+  qualityMaxFiles: 2_000,
+  qualityMaxChecks: 32,
   autoInject: true,
   maxFindings: 50,
   linters: [],
@@ -82,9 +101,11 @@ function coerceInt(value: number | undefined, fallback: number, min: number): nu
 
 /** Merge a plugin-provided partial config over the defaults (idempotent). */
 export function applyConfig(partial?: PluginConfig): void {
+  const mode = ['fast', 'balanced', 'strict'].includes(partial?.mode ?? '') ? partial!.mode! : 'balanced'
+  const preset = { ...DEFAULTS, mode, completionChecks: mode !== 'fast', qualityTimeoutMs: mode === 'strict' ? 120_000 : 60_000 }
   const forced = partial?.linters
   state.current = {
-    ...DEFAULTS,
+    ...preset,
     ...(partial ?? {}),
     linters:
       forced && forced.length > 0
@@ -92,6 +113,11 @@ export function applyConfig(partial?: PluginConfig): void {
         : [],
     linterPath: { ...partial?.linterPath },
   }
+  state.current.mode = mode
+  state.current.completionChecks = partial?.completionChecks ?? preset.completionChecks
+  state.current.qualityTimeoutMs = coerceInt(partial?.qualityTimeoutMs, preset.qualityTimeoutMs, 1_000)
+  state.current.qualityMaxFiles = coerceInt(partial?.qualityMaxFiles, preset.qualityMaxFiles, 1)
+  state.current.qualityMaxChecks = coerceInt(partial?.qualityMaxChecks, preset.qualityMaxChecks, 1)
   if (forced && forced.length > 0 && state.current.linters.length !== forced.length) {
     console.warn(
       `[dsh-lint-loop] ignoring unknown linter keys in config (valid: ${LINTER_KEYS.join(', ')})`,

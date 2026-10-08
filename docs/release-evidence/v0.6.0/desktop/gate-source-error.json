@@ -1,0 +1,48 @@
+[
+  {
+    "type": "event",
+    "event": {
+      "type": "agent/inbox/spliced",
+      "seq": 158,
+      "time": 1791421998765,
+      "data": {
+        "target": "next-step",
+        "start": 0,
+        "inserted": [
+          {
+            "id": "a229d324-f95c-4250-9432-dd789e438812",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "quality: this turn cannot finish cleanly — 1 new regression(s).\ntests:.: tests/a.test.js|a|AssertionError: expected 2 to be 1 // Object.is equality\nFix only this turn's regressions (lint_repair performs safe autofix), then finish. Use quality_receipt for evidence. Continuation 1/2."
+              }
+            ],
+            "source": {
+              "kind": "plugin",
+              "plugin": "dsh-lint-loop"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "event",
+    "event": {
+      "type": "turn/end",
+      "seq": 161,
+      "time": 1791421999308,
+      "data": {
+        "turn": 2,
+        "reason": {
+          "kind": "error",
+          "error": {
+            "message": "format v4 message requires a producer-owned source kind",
+            "code": "UNKNOWN"
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "mode": "balanced",
+  "root": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke",
+  "changedFiles": [
+    "src/a.js"
+  ],
+  "newlyIntroducedRegressions": [
+    {
+      "check": "lint",
+      "identity": "src/a.js|eslint|error|semi|missing semicolon."
+    },
+    {
+      "check": "typecheck:.",
+      "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+    }
+  ],
+  "autoFixed": [],
+  "agentFixed": [
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|a|AssertionError: expected 2 to be 1 // Object.is equality"
+    }
+  ],
+  "ignoredHistoricalDebt": [
+    {
+      "check": "lint",
+      "identity": "src/a.js|eslint|error|no-unused-vars|'debt' is assigned a value but never used."
+    },
+    {
+      "check": "typecheck:.",
+      "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:287f5921d73c5fd8"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+    }
+  ],
+  "lint": "regression",
+  "typecheck": "regression",
+  "tests": "regression",
+  "selection": {
+    "strategy": "dependency",
+    "files": [
+      "tests/a.test.js"
+    ],
+    "reasons": [
+      "transitive reverse imports, including changed tests"
+    ],
+    "complete": true
+  },
+  "checksExecuted": [
+    {
+      "id": "lint:src/a.js",
+      "kind": "lint",
+      "scope": "src/a.js",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\node_modules\\.bin\\eslint.cmd",
+      "args": [
+        "--no-warn-ignored",
+        "-f",
+        "json",
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\src\\a.js"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.js|eslint|error|no-unused-vars|'debt' is assigned a value but never used.",
+        "src/a.js|eslint|error|semi|missing semicolon."
+      ],
+      "executed": [],
+      "elapsedMs": 247,
+      "invocations": [
+        {
+          "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\node_modules\\.bin\\eslint.cmd",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\src\\a.js"
+          ],
+          "cwd": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke"
+        }
+      ]
+    },
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "E:\\DeepSeek Harness\\DeepSeek Harness.exe",
+      "args": [
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f",
+        "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:287f5921d73c5fd8"
+      ],
+      "executed": [],
+      "elapsedMs": 791,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "E:\\DeepSeek Harness\\DeepSeek Harness.exe",
+      "args": [
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json",
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\tests\\a.test.js"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality",
+        "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.js|a",
+        "tests/a.test.js|historical"
+      ],
+      "elapsedMs": 2206,
+      "skipped": []
+    }
+  ],
+  "baselineChecks": [
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "E:\\DeepSeek Harness\\DeepSeek Harness.exe",
+      "args": [
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:287f5921d73c5fd8"
+      ],
+      "executed": [],
+      "elapsedMs": 312,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "E:\\DeepSeek Harness\\DeepSeek Harness.exe",
+      "args": [
+        "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop-quality-smoke\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.js|a",
+        "tests/a.test.js|historical",
+        "tests/b.test.js|b"
+      ],
+      "elapsedMs": 646,
+      "skipped": []
+    }
+  ],
+  "repairRounds": 0,
+  "continuationRounds": 0,
+  "elapsedMs": 3248,
+  "finalVerdict": "regression",
+  "reasons": []
+}

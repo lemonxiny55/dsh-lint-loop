@@ -12,6 +12,7 @@ import {
   type BaselineOwner,
 } from './baseline.js'
 import { managerForRoot } from './manager.js'
+import { prepareQualityBaseline } from './quality.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 
 interface DisplayTarget {
@@ -53,11 +54,13 @@ export async function prepareMutation(displayPath: string | undefined, actor: un
   const resolved = await resolveObservedFile(displayPath, actor)
   if (!resolved) return
   const owner = ownerFromActor(actor)
+  const signal = actor && typeof actor === 'object' ? (actor as { signal?: AbortSignal }).signal : undefined
+  await prepareQualityBaseline(resolved.root, owner, signal).catch(() => undefined)
   const manager = managerForRoot(resolved.root)
   if (!hasBaseline(owner, resolved.abs)) {
     const previous = manager.findingsFor(resolved.abs)
     try {
-      const current = await manager.lintFile(resolved.abs)
+      const current = await manager.lintFile(resolved.abs, signal)
       ensureBaseline(owner, resolved.abs, current, true)
     } catch {
       ensureBaseline(owner, resolved.abs, previous, false)

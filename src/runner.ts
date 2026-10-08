@@ -14,6 +14,8 @@ export interface RunOutcome {
   spawnError?: { code?: string; message: string }
   /** The run exceeded its timeout and was killed. */
   timedOut: boolean
+  cancelled?: boolean
+  truncated?: boolean
 }
 
 const OUTPUT_CAP_BYTES = 2 * 1024 * 1024
@@ -22,14 +24,34 @@ const OUTPUT_CAP_BYTES = 2 * 1024 * 1024
 export function runProcess(
   command: string,
   args: string[],
-  options: { cwd?: string; timeoutMs: number },
+  options: { cwd?: string; timeoutMs: number; signal?: AbortSignal },
 ): Promise<RunOutcome> {
   return new Promise((resolve) => {
+    if (options.signal?.aborted) {
+      resolve({ exitCode: null, stdout: '', stderr: '', timedOut: false, cancelled: true })
+      return
+    }
     const shell = process.platform === 'win32' && needsWindowsShell(command)
-    const child = spawn(command, args, {
+    // cmd expands these even inside quotes. Fail closed for shell shims;
+    // quality checks use Node + local JS entry points and never need a shell.
+    if (shell && [command, ...args].some((arg) => /["%!\r\n]/.test(arg))) {
+      resolve({ exitCode: null, stdout: '', stderr: '', timedOut: false,
+        spawnError: { message: 'unsafe Windows shell argument; use an absolute executable or JS entry point' } })
+      return
+    }
+    const shellCommand = [`"${command}"`, ...args.map((arg) => `"${arg}"`)].join(' ')
+    const child = spawn(shell ? shellCommand : command, shell ? [] : args, {
       cwd: options.cwd,
+      // Desktop hosts embed Node in Electron: execPath is the GUI executable.
+      // Self-spawned JS checks must use its supported Node mode, otherwise
+      // Chromium/app startup output can replace or contaminate check evidence.
+      env: command === process.execPath && process.versions.electron
+        ? { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+        : undefined,
       // npm global shims on Windows are .cmd files — shell keeps them resolvable.
       shell,
+      windowsHide: true,
+      detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 
@@ -37,24 +59,43 @@ export function runProcess(
     let stderr = ''
     let timedOut = false
     let settled = false
+    let cancelled = false
+    let truncated = false
     let graceTimer: NodeJS.Timeout | undefined
 
     child.stdout?.setEncoding('utf8')
     child.stdout?.on('data', (chunk: string) => {
-      if (stdout.length < OUTPUT_CAP_BYTES) stdout += chunk
+      if (stdout.length + chunk.length > OUTPUT_CAP_BYTES) truncated = true
+      stdout = (stdout + chunk).slice(0, OUTPUT_CAP_BYTES)
     })
     child.stderr?.setEncoding('utf8')
     child.stderr?.on('data', (chunk: string) => {
-      if (stderr.length < OUTPUT_CAP_BYTES) stderr += chunk
+      if (stderr.length + chunk.length > OUTPUT_CAP_BYTES) truncated = true
+      stderr = (stderr + chunk).slice(0, OUTPUT_CAP_BYTES)
     })
     child.stdout?.on('error', () => undefined)
     child.stderr?.on('error', () => undefined)
 
+    const stop = () => {
+      if (process.platform === 'win32' && child.pid) {
+        const killer = spawn(path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'taskkill.exe'),
+          ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
+        killer.on('error', () => child.kill('SIGKILL'))
+      } else if (child.pid) {
+        try { process.kill(-child.pid, 'SIGTERM') } catch { child.kill('SIGTERM') }
+      }
+      child.kill('SIGTERM')
+      graceTimer = setTimeout(() => {
+        if (process.platform !== 'win32' && child.pid) { try { process.kill(-child.pid, 'SIGKILL') } catch { child.kill('SIGKILL') } }
+        else child.kill('SIGKILL')
+      }, 1_000)
+      graceTimer.unref?.()
+    }
+    const abort = () => { cancelled = true; stop() }
+    options.signal?.addEventListener('abort', abort, { once: true })
     const timer = setTimeout(() => {
       timedOut = true
-      child.kill('SIGTERM')
-      graceTimer = setTimeout(() => child.kill('SIGKILL'), 1_000)
-      graceTimer.unref?.()
+      stop()
     }, options.timeoutMs)
     timer.unref?.()
 
@@ -63,7 +104,8 @@ export function runProcess(
       settled = true
       clearTimeout(timer)
       if (graceTimer) clearTimeout(graceTimer)
-      resolve({ exitCode: child.exitCode, stdout, stderr, spawnError, timedOut })
+      options.signal?.removeEventListener('abort', abort)
+      resolve({ exitCode: child.exitCode, stdout, stderr, spawnError, timedOut, cancelled, truncated })
     }
 
     child.once('error', (error) => {
@@ -112,16 +154,29 @@ export function isMissingBinary(outcome: RunOutcome): boolean {
  */
 const lanes = new Map<string, Promise<unknown>>()
 
-export function schedule<T>(key: string, job: () => Promise<T>): Promise<T> {
+export function schedule<T>(key: string, job: () => Promise<T>, signal?: AbortSignal): Promise<T> {
   const tail = lanes.get(key) ?? Promise.resolve()
-  const result = tail.then(job, job)
+  let started = false
+  let rejectQueued: ((error: Error) => void) | undefined
+  const abort = () => { if (!started) rejectQueued?.(new Error('queued run cancelled')) }
+  const execute = () => {
+    started = true
+    signal?.removeEventListener('abort', abort)
+    if (signal?.aborted) throw new Error('queued run cancelled')
+    return job()
+  }
+  const work = tail.then(execute, execute)
+  const result = signal ? Promise.race([work, new Promise<T>((_resolve, reject) => {
+    rejectQueued = reject
+    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+  })]) : work
   // Store a never-rejecting tail so the lane survives failed jobs.
-  lanes.set(
-    key,
-    result.then(
+  const next = work.then(
       () => undefined,
       () => undefined,
-    ),
-  )
+    )
+  lanes.set(key, next)
+  void next.then(() => { if (lanes.get(key) === next) lanes.delete(key) })
   return result
 }

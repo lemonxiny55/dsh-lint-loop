@@ -112,19 +112,19 @@ describe('plugin lifecycle', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
     const first = mount(PLUGIN_CONFIG)
-    expect(first.registered).toEqual(['lint_status', 'lint_repair', 'lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
+    expect(first.registered).toEqual(['quality_verify', 'quality_receipt', 'lint_status', 'lint_repair', 'lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     expect(first.sectionName).toBe('lint:findings')
     expect(first.sectionOrder).toBe(75)
-    expect(first.listenerNames).toEqual(['tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
+    expect(first.listenerNames).toEqual(['session/event', 'tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(first.sectionText()).toContain('lint_diagnostics')
 
     first.dispose()
-    expect(first.disposed()).toEqual({ tools: 5, sections: 1, listeners: 5 })
+    expect(first.disposed()).toEqual({ tools: 7, sections: 1, listeners: 6 })
 
     const second = mount(PLUGIN_CONFIG)
-    expect(second.registered).toEqual(['lint_status', 'lint_repair', 'lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
+    expect(second.registered).toEqual(['quality_verify', 'quality_receipt', 'lint_status', 'lint_repair', 'lint_diagnostics', 'lint_workspace_errors', 'lint_fix'])
     second.dispose()
-    expect(second.disposed()).toEqual({ tools: 5, sections: 1, listeners: 5 })
+    expect(second.disposed()).toEqual({ tools: 7, sections: 1, listeners: 6 })
   })
 
   it('injects a findings delta after an fs/observed edit event (the closed loop)', async () => {
@@ -228,6 +228,11 @@ describe('plugin lifecycle', () => {
     ) as Array<Record<string, unknown>>
     expect(introduced.map((item) => item.rule)).toEqual(['fresh-rule'])
     expect(preexisting.map((item) => item.rule)).toEqual(['old-rule'])
+    const ended = mounted.listenersFor('session/event')[0]
+    ended(clonedSessionExec.agent.session, { type: 'tool/result' }, undefined)
+    expect(turnEditedFiles(ownerFromActor(execution))).toHaveLength(1)
+    ended(clonedSessionExec.agent.session, { type: 'turn/end', data: { reason: { kind: 'error' } } }, undefined)
+    expect(turnEditedFiles(ownerFromActor(execution))).toEqual([])
     mounted.dispose()
   })
 
@@ -324,11 +329,11 @@ describe('plugin lifecycle', () => {
   it('keeps turn repair tracking without prompt injection when autoInject is false', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false })
-    expect(mounted.registered).toHaveLength(5)
-    expect(mounted.listenerNames).toEqual(['tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
+    expect(mounted.registered).toHaveLength(7)
+    expect(mounted.listenerNames).toEqual(['session/event', 'tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(() => mounted.sectionText()).toThrow('section was not registered')
     mounted.dispose()
-    expect(mounted.disposed()).toEqual({ tools: 5, sections: 0, listeners: 5 })
+    expect(mounted.disposed()).toEqual({ tools: 7, sections: 0, listeners: 6 })
   })
 })
 
@@ -347,7 +352,7 @@ describe('completion gate wiring', () => {
   it('arms the gate without a section when autoInject is false but gate is explicit', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const mounted = mount({ ...PLUGIN_CONFIG, autoInject: false, gate: true })
-    expect(mounted.listenerNames).toEqual(['tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
+    expect(mounted.listenerNames).toEqual(['session/event', 'tools/execute', 'fs/edit-intent', 'fs/write-intent', 'fs/observed', 'agent/turn-stopping'])
     expect(() => mounted.sectionText()).toThrow('section was not registered')
     mounted.dispose()
   })

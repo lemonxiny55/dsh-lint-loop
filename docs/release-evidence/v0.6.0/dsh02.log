@@ -1,0 +1,21 @@
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+[dsh-lint-loop] plugin unloaded
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+[dsh-lint-loop] plugin unloaded
+Compatibility smoke passed: .cache/compat-02/index.js; seven tools; native presenter; dispose/remount; v24.19.0

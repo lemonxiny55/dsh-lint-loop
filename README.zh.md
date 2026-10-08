@@ -1,231 +1,86 @@
-# dsh-lint-loop
+# dsh-lint-loop — v0.6.0 Quality Loop
 
-[![npm version](https://img.shields.io/npm/v/dsh-lint-loop)](https://www.npmjs.com/package/dsh-lint-loop)
-[![CI](https://github.com/lemonxiny55/dsh-lint-loop/actions/workflows/ci.yml/badge.svg)](https://github.com/lemonxiny55/dsh-lint-loop/actions/workflows/ci.yml)
-[![Discussions](https://img.shields.io/github/discussions/lemonxiny55/dsh-lint-loop)](https://github.com/lemonxiny55/dsh-lint-loop/discussions)
+**DeepSeek Harness 的变更感知质量闭环。**
 
-[English](README.md) | 中文
+> **Fix what the agent broke. Ignore what was already broken. Prove the change is clean.**
+>
+> 修复 Agent 本轮引入的问题，忽略历史债务，并明确证明本轮变更验证了什么。
 
-**在用?** 告诉我们哪里顺手、哪里出问题——[点个 Star](https://github.com/lemonxiny55/dsh-lint-loop)、[提问](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a)、[求支持新 linter](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas),或[提 issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose)。反馈会直接影响路线图。
+普通 lint wrapper 告诉 Agent 仓库哪里有问题；Quality Loop 在首次编辑前捕获基线，编辑后提供 lint delta 与安全修复，准备完成任务时再验证类型和受影响测试。旧 lint/typecheck/test 失败不会被要求顺带清理。每次完成验证生成结构化 Quality Receipt；缺少证据、超时或不支持的检查不会显示 clean。
 
-面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(`dsh`)的零配置、回归感知 lint 修复。Agent 编辑后调用 `lint_repair { scope: "turn" }`,插件按 linter/package/crate 批处理,只修复本轮文件里新增或变化的 lint regression,忽略仓库历史债务。使用仓库已有的 eslint、biome、ruff、golangci-lint 或 cargo clippy;无需配置,不捆绑 linter。
-
-## 模型得到什么
-
-| 工具 | 用途 |
-|---|---|
-| `lint_status` | 当前回合摘要:编辑文件、新增/变化的 regression,以及 repair 忽略的历史发现。 |
-| `lint_repair` | **回归感知自动修复** —— 按 linter/package/crate 批处理本轮 regression,运行已有 fixer,最多两轮并在每轮后重新 lint。回执包含发现/修复/剩余问题、受影响文件、fixer 实际改动与忽略的历史债务。 |
-| `lint_diagnostics` | 单文件(或所有已见文件)的 lint 发现:规则、`file:line:col`、消息、`scope`(`preexisting` / `introduced` / `changed`)与 `fixable`;支持 severity、回归 scope 与 `max` 截断。参数 `file_path`(别名 `file`)。**编辑完文件立刻调用。** |
-| `lint_workspace_errors` | 本会话当前 error 总览,每条带 `scope`,可区分历史债务和本轮回归。 |
-| `lint_fix` | 对单文件运行仓库已有 fixer 并复检,返回变更、剩余与已解决发现、baseline 摘要和 linter。要一次处理本轮 regression 时使用 `lint_repair`。 |
-
-外加一个可选的**自动注入 system prompt section**(`lint:findings`,order 75——紧跟 `lsp:diagnostics` 之后):模型通过 harness 写/改文件后,插件订阅 `fs/observed` 事件,用自己的串行池 lint 该文件,只注入这次编辑**新增/变化**的发现——**默认只注入 error**(`sectionSeverity` 可调),最多 top 5 行,绝不灌全仓库。过期增量自动失效(`sectionTtlMs`,默认 30s)。渲染的发现带**源码代码帧**(问题行用 `█` 标出,附一行上下文),模型无需回读文件即可修改。而**完成门禁**(见下)会阻止"文件里还有错误却收工"。
-
-## 完成门禁(0.4)
-
-"编辑 → lint → 修复"只有真正改完才算闭环。harness 委托 edit/write 之前,插件先记录该文件的 lint baseline。在 `agent/turn-stopping` 接缝——回合关闭**之前**的串行检查点——插件检查本轮编辑过的文件;若仍有**新增或变化**的 error,就**steer 模型再走一步**(附上精确发现),而不是让它收工。编辑前已经存在的错误仍会显示,但不会阻塞本轮:
-
-```
-lint: this turn cannot finish cleanly — 2 errors remain in file you edited.
-# lint findings (2 errors)
-src/a.ts:3:10  error  no-unused-vars  'x' is defined but never used
-src/a.ts:7:5   error  eqeqeq          Expected '===' and instead saw '=='.
-(fix them (lint_fix repairs what it can), then finish — this nudge is capped per turn)
-```
-
-它刻意是**自我限流**的——官方 Claude Code 桥对此留了明确的 TODO,而本门禁内建了保护:
-
-- 每个文件每次收尾只评估**一次**(重新编辑会重新触发,但不会卡在同一批旧发现上死循环);
-- 每轮最多强制 **`gateMaxSteers` 次续跑**(默认 `2`),之后放行;
-- 只考虑**本轮模型自己碰过的文件**——这些文件的历史错误和未触及文件里的错误都不会阻塞;
-- `gate: false` 彻底关闭;`autoInject: false` 时除非显式 `gate: true` 否则也关闭。
-
-门禁不是硬否决,只是有界的一脚——因此永远不会卡死会话。
-
-## 回归感知修复(0.5)
-
-编辑后调用 `lint_repair { scope: "turn" }`。它复用完成门禁的编辑前 baseline 与 finding matcher,忽略本轮编辑前已经存在的问题,并把同一 package/crate 的文件合并为一次 fixer 调用。每轮修复后都会重新 lint;最多两轮,或在没有进展时停止。回执会报告发现、已修复、剩余、受影响文件、fixer 实际修改文件及忽略的历史发现。
-
-文件级 fixer 若复检引入新诊断,会恢复文件原始内容并再次检查。如果它可能顺带修复历史可修问题,就跳过 fixer;Biome 无法可靠判断 fixability,因此文件里只要有旧 finding 就跳过。只有当 package/crate 范围内的所有发现都属于本轮 regression 时,才运行包级/crate 级 fixer。包级修复可能修改邻近源文件,插件不做不可靠的回滚;回执明确列出修改文件与新发现。`lint_status` 提供本轮状态摘要。当前 DSH 插件 API 没有稳定的 slash-command 注册接口,所以这里提供 Agent 工具,不伪造 `/lint-status` 命令。
-
-## 闭环
-
-```
-模型编辑文件  ──►  dsh 写入(fs 工具)
-                    │
-                    ▼ fs/observed 事件
-        插件先记录编辑前 baseline,再用仓库自己的 linter lint 该文件
-                    │
-                    ▼ 只推新增/变化的发现(默认 error)
-        delta 注入 prompt(或按需调 lint_diagnostics)
-                    │
-                    ▼
-        模型读到 "src/a.ts:12 no-unused-vars …"  ──►  lint_fix ──►  清零
-                    │
-                    ▼ 回合即将关闭
-        门禁:编辑过的文件还有 error? ── steer 再走一步(有上限)
-```
-
-## 零配置
-
-插件探测 repo root 已有的配置,按扩展名路由:
-
-| 探测到的配置 | Linter | 文件类型 |
-|---|---|---|
-| `eslint.config.{js,mjs,cjs,ts}` 或 `.eslintrc.{js,cjs,json,yml}` | eslint | `.ts .tsx .mts .cts .js .jsx .mjs .cjs` |
-| `biome.json` / `biome.jsonc` | biome | 同上 JS 系列 |
-| `ruff.toml` / `.ruff.toml` / `pyproject.toml` 含 `[tool.ruff]` | ruff | `.py .pyi` |
-| `.golangci.yml` / `.golangci.yaml` / `.golangci.toml` / `.golangci.json` | golangci-lint | `.go` |
-| `Cargo.toml` | cargo clippy | `.rs` |
-
-- **多配置并存?** JS 系列默认走 eslint;仅当存在 biome 配置且**没有** eslint 配置时才走 biome。可用 `linters` 配置键强制指定。
-- **仓库本地安装直接可用**:`npm i -D eslint` 装进 `node_modules/.bin` 的二进制,插件会先于 `PATH` 解析。
-- **什么都没配?** 插件保持安静;调用工具会返回初始化提示(`npx eslint --init` / `biome init` / ruff / 一个 `.golangci.yml` / 一个 `Cargo.toml`),而不是报错。
-- **配置文件变更**(比如会话中途加了 `biome.json`)会被观察到并自动重新探测。
-
-示例(输入 → 输出):
-
-```
-lint_diagnostics { file_path: "src/extract.ts" }
-# lint findings (1 error, 1 warning)
-src/extract.ts:12:3   error  no-unused-vars  'foo' is defined but never used
-  11 | export function extract(input: string) {
-  12 |   const foo = parse(input)  █
-  13 |   return input
-src/store.ts:8:5      warn   semi            missing semicolon  [fixable]
-```
-
-`execute` 返回的是 canonical JSON(rule、file、line、col、severity、message、fixable、linter 和 `scope`);上面这张紧凑表格 + 代码帧是渲染视图。`lint_diagnostics` 保持原有调用方式,另支持可选 `scope: "all" | "introduced" | "preexisting"`;默认是 `all`。`file_path` 与 harness 原生 fs 工具一致,`file` 别名同样可用。修复:
-
-```
-lint_fix { file_path: "src/store.ts" }
-# lint_fix (eslint) — src/store.ts
-fixed: yes (+0/-1 lines)
-remaining: none — file is clean
-```
-
-## 安装
-
-需要 `dsh`(npx、npm 或源码安装均可)与 Node ≥ 22。linter 本身**不捆绑**——插件用仓库里已有的。
+**v0.6.0 — Quality Loop**。完整参数与限制见 [English README](README.md)。
 
 ```sh
-# 从 npm(预构建)
-npx @deepseek-ai/dsh plugin --profile web add dsh-lint-loop
-
-# 或从本仓库 checkout 目录
-npx @deepseek-ai/dsh plugin --profile web add ./dsh-lint-loop
+dsh plugin --profile web add dsh-lint-loop@0.6.0
 ```
 
-重启 Web UI(`npx @deepseek-ai/dsh web`)——启动日志确认每个工具:
+使用项目已安装的 linter、TypeScript 与测试工具；插件不捆绑这些依赖。
 
+## 两条通道
+
+- **Fast Lane**：现有编辑 → lint delta → 提示反馈；`lint_repair` 最多两轮，修复仅限本轮新增/改变的 lint 问题。
+- **Completion Lane**：awaited `agent/turn-stopping` checkpoint 或 `quality_verify`，验证 lint delta、每个 Node package 的 typecheck 与 impacted tests。第一次编辑前进行一次有预算的类型/测试基线扫描，之后保留原始基线。最多两次强制继续，复验保留整轮文件集合。
+
+历史错误被忽略不等于仓库没有错误。只有完整且可比的检查没有新增问题，才能得到 `clean`；无法证明的部分显示 `incomplete`，默认 gate 不会因证据缺失而要求清理历史代码。
+
+## Before / after
+
+```text
+编辑前：旧 lint warning、旧 TS2322、旧 migration test 失败
+Agent 修改 parser.ts：引入可修复 lint 错误、返回类型错误、parser test 失败
+
+普通 wrapper：旧 lint + 新 lint 混在一起，lint 通过便可能交付
+Quality Loop：安全修复新 lint → 检测新类型/测试失败 → 有上限地要求修复
+修复后：历史债务仍保留，Receipt 显示本轮 clean 和真实测试范围
 ```
-[dsh-lint-loop] plugin loaded
-[dsh-lint-loop] registered tool: lint_diagnostics
-...
-```
 
-linter 缺失?工具会给出确切安装命令:`linter "eslint" is not installed or failed to run. Install it with: npm i -D eslint`。
+## 模式
 
-## 使用
-
-在工作区会话里对 agent 说:
-
-- "改一下 `src/extract.ts`,然后用 lint_diagnostics 检查。" —— section 可能已经把发现推过来了。
-- "把 src/store.ts 里能自动修的 lint 问题都修掉。"(`lint_fix`)
-- "现在有哪些 lint 错误?"(`lint_workspace_errors`)
-
-## 配置
-
-通过 profile patch 里插件行的 `config` 传入(缺省用默认值):
+| 模式 | 完成验证 | 总扫描预算 |
+|---|---|---|
+| `fast` | lint；明确跳过类型/测试，完整质量 verdict 为 incomplete | 60s |
+| `balanced`（默认） | lint delta、package typecheck、受影响测试与保守降级 | 60s |
+| `strict` | lint delta、package typecheck、仓库 package 测试套件 | 120s |
 
 ```yaml
-# $DSH_HOME/profiles/<name>/cordis.patch.yml —— 裸行按 id 覆盖。
 - id: lint-loop
   config:
-    maxFindings: 30
-    linters: [eslint, ruff]   # 强制指定;否则自动探测
+    mode: balanced
 ```
 
-| 键 | 默认 | 含义 |
-|---|---|---|
-| `autoInject` | `true` | 注册自动注入的发现 section(及 `fs/observed` 监听) |
-| `maxFindings` | `50` | 工具输出与注入 section 的发现硬上限(token 成本护栏) |
-| `linters` | `[]`(自动) | 强制可用的 linter 集合(`eslint` / `biome` / `ruff` / `golangci` / `clippy`);未知键告警 |
-| `linterPath` | `{}` | 按 linter 的二进制覆盖(`{eslint: …, biome: …, ruff: …, golangci: …, clippy: …}`);`.js/.mjs/.cjs` 结尾的路径用当前 Node 直跑 |
-| `sectionTtlMs` | `30000` | 注入 delta 的保鲜时长(最小 1000) |
-| `sectionSeverity` | `error` | 注入 section 报告的严重级别(`error`/`warning`/`info`)——默认把 warning 挡在 prompt 外 |
-| `settleMs` | `600` | 最后一次编辑后重新 lint 的静默期(最小 100) |
-| `timeoutMs` | `10000` | 单次 linter 进程超时(最小 1000);超时进程被杀掉并明确上报 |
-| `gate` | `true` | 完成门禁:编辑过的文件仍有 error 时阻止回合收尾 |
-| `gateMaxSteers` | `2` | 每轮最多强制续跑次数,超过则放行(最小 0) |
-| `gateSeverity` | `error` | 完成门禁执行的严重级别 |
-| `codeFrames` | `true` | 为渲染的发现附源码代码帧 |
-| `frameLines` | `1` | 代码帧上下各带几行上下文 |
-| `frameLimit` | `5` | 最多为几条发现附代码帧(token 护栏) |
+原有配置兼容；高级字段覆盖 preset。新增 `completionChecks`、`qualityTimeoutMs`、`qualityMaxFiles`（2000）、`qualityMaxChecks`（32）。Node 22/24 与现有 DSH 0.1/0.2 peer 范围保留。
 
-## 支持的 linter
+## 工具与 UI
 
-- **eslint**(`--no-warn-ignored -f json`):flat config 与旧版 `.eslintrc` 均可;不认 `--no-warn-ignored` 的老版本(< 8.22)自动去掉该 flag 重试,按仓库记忆。
-- **biome**(`check --reporter=json`):兼容 ≥ 2 的 reporter 形态(1-based line/column、CLI 相对路径字符串)与旧版字节偏移 `span` 形态;`format`/`organizeImports` 的 diff **不算** finding。
-- **ruff**(`check --output-format=json`):1-based 位置;有 `fix` 即 `fixable: true`;所有违规都是 error(ruff 没有严重级别)。
-- **golangci-lint**(`run --output.json.path=stdout`,自动回退到 v1 的 `--out-format=json`):包级作用域——分析文件所在目录,发现按各自文件分发;`Severity` 为空视为 `error`;`SuggestedFixes`(v1.64+/v2)或旧版 `Replacement` 标记 `fixable`。
-- **cargo clippy**(`clippy --message-format=json`):crate 级作用域——在最近的 `Cargo.toml` 目录中运行;NDJSON 的 `compiler-message` 行转为发现(`clippy::*` / `E####` 编码),子 span 的建议标记 `fixable`。它会先做 crate 类型检查,冷启动很慢(超时下限 120s;`golangci-lint` 60s)。
+新增 `quality_verify`（只读完整验证）和 `quality_receipt`（读取最后回执）；保留 `lint_status`、`lint_repair`、`lint_diagnostics`、`lint_workspace_errors`、`lint_fix`。
 
-`linters.ts` + `parse.ts` 仍是新 linter 的接入缝(命令、参数、JSON 形态、安装提示)。
+`quality_verify` / `quality_receipt` 通过普通 DSH 工具结果展示结构化回执。纯 Host 展示适配保留 running / clean / regression / failed、文件数量和三个检查状态。**桌面/Web Quality Bar 延后**：已审计的 DSH 0.2 桌面客户端不消费 Host `presentCall` / `presentResult`，专用界面需要客户端集成。v0.6 不加入客户端 bundle 或 UI hack。自动 gate 保存结果，调用 `quality_receipt` 可读取。
 
-## 工作原理
+[UI 审计与后续截图说明](docs/quality-bar-demo.md) · [实际桌面回执](docs/release-evidence/v0.6.0/desktop/rc/122-quality_receipt.json)
 
-- **探测**(`src/detect.ts`):按 repo root 探测配置文件,带缓存;观察事件携带 linter 配置文件名(`biome.json`、`pyproject.toml`、…)时失效重探。`pyproject.toml` 只有真的含 `[tool.ruff]` 才算 ruff。
-- **Runner 池**(`src/runner.ts`):每 (root, linter) 一条串行车道——保存风暴只会排队,不会并发开 N 个 linter;每次运行一次性 spawn,stdout/stderr 封顶,`timeoutMs` 到点杀掉(SIGTERM → SIGKILL 宽限)。
-- **发现存储**(`src/manager.ts`):每 root 一个 manager,保存每文件最近一次 lint 结果(512 文件软上限);`lint_fix` 修复前后各读一次文件,汇总行级 diff,再复检拿到权威的剩余集合。包级运行的结果会**分发**——发现落到各自上报的文件下,`lint_diagnostics { file }` 仍然只回答该文件。
-- **回归 baseline**(`src/baseline.ts`、`src/regression.ts`):`tools/execute` 在 DSH `edit` / `write` 调用前记录每个 session/file 的第一份 findings,并且只把成功 mutation 计入本轮编辑;以稳定 session ID 关联状态。fs intent 监听作为兼容路径保留。匹配综合 linter、rule、severity、标准化 message、源码行与有界位置距离,处理前置插行、重复 rule/message、同一 turn 多次编辑和 package-scoped 结果。即使关闭 gate,baseline 也会在 turn boundary 清理。
-- **编辑检测**(`src/section.ts`):成功的文件工具调用与兼容的 `fs/observed` 事件会入队文件;`settleMs` 防抖刷新后与回归 baseline 比较——只有配置级别的新增/变化发现进入 prompt,最多 top 5。
-- **代码帧**(`src/frames.ts`):lint 运行时缓存源码行,为前 `frameLimit` 条渲染的发现附上问题行标记 `█` 的上下文;渲染路径保持同步,缓存冷时(回放)优雅降级为不带帧。
-- **完成门禁**(`src/gate.ts`):本轮观察到的文件在 `agent/turn-stopping` 时重新 lint;未解决的新增/变化 error 才触发有界的 `agent.steer`(每轮 ≤ `gateMaxSteers`),随附发现。历史发现仍可通过 diagnostics 查看,但不算 gate error。
-- **工作区解析**:会话 cwd → 向上找最近 `.git`(有界),与 dsh-code-index 一致;仓库外的文件一律拒绝。
-- **Token 成本意识**:每个面——工具输出与注入 section——都受 `maxFindings` 约束(section 为 top 5);注入的是单次编辑的 delta,不是全仓库。
+正常完成、模型报错或取消任务都会清理本轮基线和修复预算，取消未完成检查，保留最后一份回执。下一轮重新捕获基线，避免限流中断后混入上一轮记录。补分号不会把同一个类型错误重复计入修复数量。
 
-## 与 dsh-lsp-diagnostics 的关系
+## Impacted tests 与安全
 
-两个插件**互补共存**:`dsh-lsp-diagnostics` 通过语言服务器覆盖编译器/类型错误(section order 70),本插件通过仓库的 linter 覆盖风格/lint 发现(order 75)。这边不启 LSP,那边不捆绑 linter——职责清晰,零重叠。
+第一版支持本地 Vitest 与 Jest JSON reporter。跟踪传递的相对 import/re-export、`.js` → `.ts` 和直接修改的测试。不能证明测试关系时跑 package；动态依赖、workspace alias、配置/fixture/setup 或自定义发现规则变化时扩大到仓库 packages。预算不足仍显示 incomplete。node:test、自定义命令链、非 Node 框架和 TypeScript project-reference build 暂不自动证明。
 
-## 已知限制
+Typecheck 用文件 + TS code + message 多重集比较，忽略行号漂移；测试用 suite + fullName + failure signature 比较，旧失败症状改变也算新 regression。Receipt 包含实际命令、执行测试、基线、债务、自动/Agent 修复、轮次与耗时。
 
-- `lint_workspace_errors` 覆盖**本会话** lint 过的文件(首次被 `lint_diagnostics` 检查即入集)——不是全仓库批量扫描。
-- Biome 的 JSON reporter 不暴露可修复性——biome 发现的 `fixable` 恒为 `false`,但 `lint_fix` 仍会跑 `biome check --write` 并如实报告改动。
-- Ruff 没有严重级别——所有 ruff 发现都以 `error` 呈现。
-- 包级 linter(`golangci-lint`、`cargo clippy`)分析的是包/crate 而非单文件:一次运行覆盖该包里所有被改文件,发现归到各自文件,只对传给 `lint_fix` 的那个文件做 diff。`cargo clippy` 先做 crate 类型检查,首次运行可能远超 120s 下限。
-- 删除/rename 观测:当前 DSH 的 `fs/observed` 合约可靠提供 present 结果,但没有稳定的旧路径/新路径 rename 事件可供插件使用。因此删除或 rename 不会被 eager 迁移 regression state;下一次 lint/tool 调用会重新解析路径,manager 生命周期会限制残留状态。
-- baseline identity 采取保守策略:优先用源码行,对没有可读源码的 linter 才使用有界的位置近似。如果 rule/message 与源码上下文同时发生且无法消歧,结果可能标为 introduced 而不是 changed。
-- 自动注入由 harness 文件事件触发;用户在带外直接改文件(不经 harness)不会被观察到,直到下次调用工具。
-- linter 需已安装(先解析仓库本地 `node_modules/.bin`,再 `PATH`,再 `linterPath`);刻意不捆绑。
-- 完成门禁是有界 nudge 而非硬阻断:每轮最多强制 `gateMaxSteers` 次续跑后放行,不会卡死会话。
-- 开发者预览版 harness:上游 API 随时可能破坏性变更。
+eslint/biome/ruff 的文件修复跳过历史可修复债务，验证失败或产生新 lint 时回滚。自动 Go/Rust package/crate fixer 因可能修改邻居/manifest/lockfile 而跳过；诊断和显式独立 fixer API 保留。已有 baseline 的 `lint_fix` 也遵守 regression-only；无 baseline 的独立调用保持旧的显式清理用法。
 
-## 开发
+## 边界与限制
+
+仅归因成功 DSH edit/write 与兼容 fs-intent；shell/custom-tool 编辑、删除与并发外部修改不保证完整归因。Flaky tests 可能形成 regression；检查本身可能有副作用。没有 LLM review、需求管理、安全扫描、coverage/CI 平台，也不强依赖其他插件。
+
+`dsh-doublecheck` 管交付纪律和需求；`dsh-test-runner` 管通用测试执行；`dsh-review-loop` 管人的增量 diff review；本插件证明 **本轮 Agent 变更没有引入新的质量问题**。
+
+[架构审计](docs/quality-loop-design.md) · [候选版本验证记录](docs/release-evidence/v0.6.0/verification.md)
 
 ```sh
-pnpm install
-pnpm test        # vitest —— 对标记驱动的 fake linter 覆盖探测/路由/解析器/工具/修复/生命周期
+pnpm install --frozen-lockfile
 pnpm typecheck
-pnpm build       # tsup → dist/index.js(ESM,外部依赖)
-
-# 在真实仓库上探测真实 linter(任何装了 eslint/biome/ruff 的 checkout)
-node scripts/probe-linter.mjs /path/to/repo src/someFile.ts
+pnpm test
+pnpm build
 ```
 
-测试跑在 `tests/helpers/fakeLinter.mjs` 上——一个标记驱动的 fake(`// lint: <severity> <rule> <message>`),按真实 linter 的 JSON 形态输出(eslint 数组、biome 1-based start/end 或字节偏移 span 的 diagnostics、ruff 数组),并通过剥离 `[fixable]` 标记注释模拟自动修复——CI 无需真实 linter。真实 eslint 10 / biome 2.5 / ruff 0.16 的输出形态已通过 `scripts/probe-linter.mjs` 捕获并做了回归测试。
-
-## 反馈
-
-- **问题、安装、用法** → [Discussions › Q&A](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/q-a)
-- **想法、希望支持的 linter、闭环工作流** → [Discussions › Ideas](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/ideas)
-- **使用姿势与晒图** → [Discussions › Show and tell](https://github.com/lemonxiny55/dsh-lint-loop/discussions/categories/show-and-tell)
-- **可复现的 bug** → [提 issue](https://github.com/lemonxiny55/dsh-lint-loop/issues/new/choose)
-
-如果 `dsh-lint-loop` 帮你省掉了一轮修复,点个 Star 能让更多 dsh 用户发现它。
-
-## 许可
-
-MIT。与 DeepSeek 无隶属关系;构建于 `dsh` 公开插件接口之上。
+[MIT License](LICENSE)
