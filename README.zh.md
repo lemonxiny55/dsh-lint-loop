@@ -6,13 +6,25 @@
 >
 > 修复 Agent 本轮引入的问题，忽略历史债务，并明确证明本轮变更验证了什么。
 
-普通 lint wrapper 告诉 Agent 仓库哪里有问题；Quality Loop 在首次编辑前捕获基线，编辑后提供 lint delta 与安全修复，准备完成任务时再验证类型和受影响测试。旧 lint/typecheck/test 失败不会被要求顺带清理。每次完成验证生成结构化 Quality Receipt；缺少证据、超时或不支持的检查不会显示 clean。
+Quality Loop 在首次编辑前捕获基线，只让可归因的新增问题触发修复与续轮。编辑后给出快速 lint 增量；任务完成前验证类型和受影响测试，用 Quality Receipt 说明实际检查了什么。
 
 **v0.6.0 — Quality Loop**。完整参数与限制见 [English README](README.md)。
 
 ```sh
 dsh plugin --profile web add dsh-lint-loop@0.6.0
 ```
+
+把 `web` 替换为实际 profile。桌面端可让 `plugin_manager` 安装并启用[已发布 bundle](https://github.com/lemonxiny55/dsh-lint-loop/releases/download/v0.6.0/dsh-lint-loop-0.6.0.tgz)。[独立 Demo 与复现步骤](https://github.com/lemonxiny55/dsh-lint-loop-demo/blob/main/README.zh.md)。
+
+- **只处理新增回归**：旧 lint、类型错误和失败测试继续记录，不要求顺带清理。
+- **两条通道**：编辑后快速 lint 反馈与安全修复，完成前有界验证 lint 增量、类型和受影响测试。
+- **可核对的证明**：回执列出实际命令、执行用例、修复、历史债务，以及无法验证的部分。
+
+[![真实 DSH 工具结果导览](assets/quality-loop-walkthrough.gif)](https://github.com/lemonxiny55/dsh-lint-loop-demo/blob/main/README.zh.md)
+
+**桌面实测：保留 17 个旧 lint 问题，安全修复 2 个新增回归，受影响测试 12/12，lint / 类型 / 测试均为 `clean`。** 首次基线跑了 **15/15**；源码修复前后逐字节一致。[原始回执与运行来源](https://github.com/lemonxiny55/dsh-lint-loop-demo/tree/main/evidence)。
+
+30 秒 GIF 是真实已保存工具结果的原生窗口导览，并非连续实时录像。[MP4、原始帧与录制脚本](https://github.com/lemonxiny55/dsh-lint-loop-demo/tree/main/recordings)。展示的是普通 Receipt 详情，独立 Quality Bar 尚未上线。
 
 使用项目已安装的 linter、TypeScript 与测试工具；插件不捆绑这些依赖。
 

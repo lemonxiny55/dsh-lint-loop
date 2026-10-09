@@ -6,10 +6,26 @@
 
 > **Fix what the agent broke. Ignore what was already broken. Prove the change is clean.**
 
-A lint wrapper tells the agent what is broken. Quality Loop compares this turn against evidence captured **before the first edit**, repairs lint regressions safely, and checks types and affected tests before completion. Historical failures stay visible without demanding an unrelated cleanup. A structured **Quality Receipt** says exactly what ran, what changed and what could not be verified.
+Compare the agent's changes with evidence captured **before the first edit**. Keep historical failures visible, repair new lint regressions safely, and verify types and impacted tests before completion.
 
 **v0.6.0 — Quality Loop**
 English | [中文](README.zh.md)
+
+```sh
+dsh plugin --profile web add dsh-lint-loop@0.6.0
+```
+
+Replace `web` with your profile name. Desktop users can install the [published bundle](https://github.com/lemonxiny55/dsh-lint-loop/releases/download/v0.6.0/dsh-lint-loop-0.6.0.tgz) with DSH's `plugin_manager`. [Install details](#install) · [Reproduce the demo](https://github.com/lemonxiny55/dsh-lint-loop-demo).
+
+- **Only new regressions steer the agent:** old lint, type and test failures remain recorded.
+- **Two speeds:** fast lint feedback and safe repair; bounded completion checks for lint delta, types and impacted tests.
+- **Proof you can inspect:** a Quality Receipt lists actual commands, executed tests, repairs, ignored debt and missing evidence.
+
+[![Actual DSH tool-results walkthrough](assets/quality-loop-walkthrough.gif)](https://github.com/lemonxiny55/dsh-lint-loop-demo)
+
+**Real desktop result:** 17 historical lint issues retained · 2 new regressions safely auto-fixed · impacted tests **12/12** · lint / types / tests `clean`. The initial baseline ran **15/15**; the source was byte-identical after repair. [Raw receipt and provenance](https://github.com/lemonxiny55/dsh-lint-loop-demo/tree/main/evidence).
+
+The 30-second GIF is a walkthrough of real saved DSH tool results, not a continuous live recording. [MP4, original captures and recording scripts](https://github.com/lemonxiny55/dsh-lint-loop-demo/tree/main/recordings). It shows the native receipt viewer; an independent Quality Bar is not shipped.
 
 ## Before → after
 
@@ -41,7 +57,7 @@ Tests executed: parser.test.ts; unrelated tests excluded when the dependency is 
 
 **Fast Lane:** the existing edit → lint delta → prompt feedback loop. `lint_repair` safely repairs this turn's lint regressions. It never repairs type/test failures by rewriting code. File fixers skip historical fixable debt and roll back newly introduced lint findings or failed verification.
 
-**Completion Lane:** at the awaited `agent/turn-stopping` checkpoint, or via `quality_verify`, check all this turn's files against the original baselines. Capture Node/TS typecheck and test baselines once before the first edit; this initial capture may run package suites and has a separate bounded budget. Later edits retain the original evidence. A continuation retains the **entire turn scope**, even without another edit event.
+**Completion Lane:** at the awaited `agent/turn-stopping` checkpoint, or via `quality_verify`, check all this turn's files against the original baselines. Capture Node/TS typecheck and test baselines once before the first edit; this initial capture may run package suites and has a separate bounded budget. Later edits retain the original evidence. A completion-gate continuation within the same turn retains the **entire turn scope**, even without another edit event. A new user turn after completion/error does not inherit the ended turn's baseline.
 
 There are at most two forced continuations and two autofix rounds per turn by default. Exhausting either budget does not turn a regression receipt green. Reads and failed writes do not join the change set. No source rewinding, stash or worktree reset is used to obtain a baseline.
 
@@ -144,7 +160,7 @@ No LLM code review, requirements management, security scan, coverage platform or
 - Initial test/type baselines cost one bounded repository-package sweep. Flaky tests can look like regressions; suites may have side effects. Checks use local processes, as the existing linter runner does; they are not a sandbox boundary.
 - Static dependency selection is conservative, not a complete language/runtime index. Generated files, assets and nonliteral runtime dependencies require broader evidence; unknown patterns should be configured to a supported runner or assessed separately.
 - Missing linters, missing compiler/test runners, custom scripts, TypeScript reference builds, skipped tests and unparsed output remain incomplete. The gate does not demand historical cleanup or invent a result.
-- Host presenters are tested against DSH 0.1/0.2 contracts. The current built-in desktop/Web renderer does not consume them; a dedicated Quality Bar and its screenshot/GIF are deferred.
+- Host presenters are tested against DSH 0.1/0.2 contracts. The current built-in desktop/Web renderer does not consume them; a dedicated Quality Bar is deferred. The demo captures ordinary native tool results, not a custom Quality Bar.
 
 [Architecture audit and design](docs/quality-loop-design.md) · [Candidate validation evidence](docs/release-evidence/v0.6.0/verification.md)
 
