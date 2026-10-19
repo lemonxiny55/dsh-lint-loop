@@ -14,6 +14,7 @@ type Disposer = void | (() => void)
 /** Minimal structural Context; the real @deepseek-ai/cordis type is a
  *  runtime dependency we intentionally do not import in the bundle entry. */
 interface MinimalContext {
+  get?(name: string): unknown
   workingDirectory?: { get(session: object): string }
   effect(fn: () => Disposer): void
   tools: { register(t: unknown): () => void }
@@ -137,7 +138,8 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
         const execution = args[0] as { name?: string; arguments?: unknown; agent?: { session?: object } } | undefined
         const next = args[1]
         const session = execution?.agent?.session
-        if (execution && session && ctx.workingDirectory) bindActorCwd(execution, ctx.workingDirectory.get(session))
+        const workingDirectory = (typeof ctx.get === 'function' ? ctx.get('workingDirectory') : ctx.workingDirectory) as MinimalContext['workingDirectory']
+        if (execution && session && workingDirectory) bindActorCwd(execution, workingDirectory.get(session))
         if ((execution?.name !== 'edit' && execution?.name !== 'write') || typeof next !== 'function') {
           return typeof next === 'function' ? (next as () => unknown)() : undefined
         }

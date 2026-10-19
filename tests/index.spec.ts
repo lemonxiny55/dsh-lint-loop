@@ -36,7 +36,8 @@ function mount(pluginConfig?: Record<string, unknown>, workingDirectory?: { get(
   let disposeEffect: (() => void) | undefined
 
   const ctx = {
-    workingDirectory,
+    get(name: string) { return name === 'workingDirectory' ? workingDirectory : undefined },
+    get workingDirectory(): never { throw new Error('undeclared Cordis service read') },
     effect(fn: () => void | (() => void)) {
       disposeEffect = fn() ?? undefined
     },
