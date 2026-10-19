@@ -187,6 +187,7 @@ describe('bounded read-only evidence', () => {
     await f.repo.write('src/a.ts', 'export const a = 3')
     await endCheckpoint(overlap, 'success'); await endCheckpoint(a, 'success'); await endCheckpoint(b, 'success')
     expect((await auditCoverage(f.repo.root, f.owner)).status).toBe('incomplete')
+    expect((await auditCoverage(f.repo.root, f.owner)).changes.every(c => c.attribution === 'unattributed')).toBe(true)
     await edit(other)
     expect((await verifyQuality(other.repo.root, other.owner)).finalVerdict).toBe('clean')
     expect((await auditCoverage(other.repo.root, f.owner)).changes).toEqual([])
@@ -251,6 +252,7 @@ describe('bounded read-only evidence', () => {
       expect(receipt.finalVerdict).toBe('incomplete')
       expect(receipt.newlyIntroducedRegressions).toEqual([])
       expect(receipt.evidenceCoverage.reasons.join(' ')).toContain('canonical commit bytes disagree')
+      expect(receipt.evidenceCoverage.changes[0].attribution).toBe('unattributed')
       expect((await repairTurn(f.repo.root, f.owner)).stoppedBecause).toBe('baseline-unavailable')
     } finally { mounted.dispose() }
   })

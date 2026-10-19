@@ -6,6 +6,7 @@ publication, Release or merge is needed.
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
+node scripts/prepare-demo-dependencies.mjs
 npm install --prefix .cache/dsh021 @deepseek-ai/dsh@0.2.1-rc.2 @deepseek-ai/dsh-tools@0.2.1-rc.2 @deepseek-ai/cordis@4.0.5 --no-audit --no-fund
 npm install --prefix .cache/demo-v070 eslint@10.12.0 typescript@6.0.3 vitest@4.1.11 --no-audit --no-fund
 node scripts/check-dsh-api.mjs

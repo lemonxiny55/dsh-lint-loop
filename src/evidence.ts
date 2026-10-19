@@ -168,7 +168,7 @@ function append(state: State, changes: ChangeEvidence[]): void {
   if (changes.length > remaining) state.reasons.add('change evidence event budget exceeded')
   if (state.reasons.size > 100) state.reasons = new Set([...state.reasons].slice(0, 99).concat('reason budget exceeded'))
 }
-export interface ExecutionCheckpoint { root: string; state: State; before: Snapshot; tool: string; target?: string; targets?: string[]; changes?: ChangeEvidence[]; commit?: { before: string | null; after: string } }
+export interface ExecutionCheckpoint { root: string; state: State; before: Snapshot; tool: string; target?: string; targets?: string[]; changes?: ChangeEvidence[]; commitInvalid?: boolean; commit?: { before: string | null; after: string } }
 export function finalizeCheckpoint(checkpoint: ExecutionCheckpoint, result: unknown): void {
   if (result && typeof result === 'object' && (result as { isError?: boolean }).isError) {
     for (const change of checkpoint.changes ?? []) { if (change.outcome !== 'cancelled') change.outcome = 'failure'; change.attribution = 'unattributed' }
@@ -182,6 +182,7 @@ export function confirmToolCommit(checkpoint: ExecutionCheckpoint, result: unkno
   if (!commit || typeof commit.path !== 'string' || (commit.before !== null && typeof commit.before !== 'string') || typeof commit.after !== 'string'
     || toRelative(path.resolve(commit.path), checkpoint.root) !== checkpoint.target) {
     checkpoint.state.reasons.add('canonical file commit payload unavailable or target mismatch')
+    checkpoint.commitInvalid = true
     return
   }
   const hash = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -216,10 +217,14 @@ export async function endCheckpoint(checkpoint: ExecutionCheckpoint, outcome: Ch
   if (checkpoint.commit && target) {
     const beforeHash = before.files.get(target)?.split(':')[1] ?? null
     const afterHash = after.files.get(target)?.split(':')[1]
-    if (beforeHash !== checkpoint.commit.before || afterHash !== checkpoint.commit.after) state.reasons.add('canonical commit bytes disagree with execution checkpoints; possible concurrent writer')
+    if (beforeHash !== checkpoint.commit.before || afterHash !== checkpoint.commit.after) {
+      checkpoint.commitInvalid = true
+      state.reasons.add('canonical commit bytes disagree with execution checkpoints; possible concurrent writer')
+    }
   }
   const changes = snapshotChanges(before, after).map((change): ChangeEvidence => ({ ...change, tool, outcome,
-    attribution: outcome === 'success' && (target === change.file || checkpoint.targets?.includes(change.file)) && state.active === 1 ? 'tool-target' : 'unattributed',
+    attribution: outcome === 'success' && !checkpoint.commitInvalid && !state.reasons.has('overlapping execution windows; attribution unavailable')
+      && (target === change.file || checkpoint.targets?.includes(change.file)) && state.active === 1 ? 'tool-target' : 'unattributed',
   }))
   for (const change of changes) if (change.attribution === 'unattributed') state.reasons.add('observed changes have uncertain authorship')
   append(state, changes)
