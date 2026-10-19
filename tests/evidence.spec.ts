@@ -6,6 +6,7 @@ import { apply } from '../src/index.js'
 import { ownerFromActor, turnEditedFiles } from '../src/baseline.js'
 import { applyConfig } from '../src/config.js'
 import { auditCoverage, beginCheckpoint, endCheckpoint, snapshotWorkspace, snapshotChanges, snapshotDigest } from '../src/evidence.js'
+import * as evidence from '../src/evidence.js'
 import { clearGateState, handleTurnEnded } from '../src/gate.js'
 import { disposeAllManagers, managerForRoot } from '../src/manager.js'
 import { currentQualityReceipt, prepareQualityBaseline, qualityReceipt, verifyQuality } from '../src/quality.js'
@@ -140,6 +141,19 @@ describe('bounded read-only evidence', () => {
     } } })
     expect(receipt.finalVerdict).toBe('incomplete')
     expect(receipt.evidenceCoverage.reasons.join(' ')).toContain('throughout verification')
+  })
+  it('joins the coverage audit to verification start without a concurrent-write gap', async () => {
+    const f = await fixture()
+    await edit(f)
+    const original = evidence.snapshotWorkspace
+    vi.spyOn(evidence, 'snapshotWorkspace').mockImplementationOnce(async (...args) => {
+      await f.repo.write('between-audit-and-checks.txt', 'external concurrent write')
+      return original(...args)
+    })
+    const receipt = await verifyQuality(f.repo.root, f.owner)
+    expect(receipt.finalVerdict).toBe('incomplete')
+    expect(receipt.evidenceCoverage.reasons).toContain('workspace changed between coverage audit and verification start')
+    expect(receipt.newlyIntroducedRegressions).toEqual([])
   })
   it('rejects symlinks and never modifies their targets', async () => {
     const f = await fixture(), outside = await makeFixtureRepo()

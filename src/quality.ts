@@ -182,6 +182,9 @@ export async function verifyQuality(root: string, owner?: BaselineOwner, options
     try {
       const validationStart = await snapshotWorkspace(root, budget.signal)
       if (!validationStart.complete) { coverage.status = 'incomplete'; coverage.reasons.push(...validationStart.reasons) }
+      if (snapshotDigest(validationStart) !== coverage.digest) {
+        coverage.status = 'incomplete'; coverage.reasons.push('workspace changed between coverage audit and verification start')
+      }
       for (const file of files) {
         if (!linterFamilyForExt(extOf(file))) {
           receipt.lint = 'incomplete'; receipt.reasons.push(`no supported lint coverage: ${toRelative(file, root)}`); continue
