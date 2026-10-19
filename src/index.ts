@@ -181,6 +181,11 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
             return result
           }
           outcome = 'success'
+          if (!direct && result && typeof result === 'object') {
+            const value = (result as { value?: { exitCode?: unknown; signal?: unknown; aborted?: unknown; timedOut?: unknown } }).value
+            if (value?.aborted === true) outcome = 'cancelled'
+            else if (value?.timedOut === true || typeof value?.signal === 'string' || typeof value?.exitCode === 'number' && value.exitCode !== 0) outcome = 'failure'
+          }
           if (direct && checkpoint) confirmToolCommit(checkpoint, result)
           const mutation = direct ? await recordSuccessfulToolMutation(filePath, execution).catch(() => null) : null
           if (mutation) {

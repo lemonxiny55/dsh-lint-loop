@@ -29,11 +29,10 @@ export async function findRepoRoot(startDir: string, maxLevels = 12): Promise<st
 
 /** Explicit session roots permit non-Git workspaces; never guess a filesystem root. */
 export async function findWorkspaceRoot(cwd: string): Promise<string | null> {
-  const root = await findRepoRoot(cwd)
-  if (root) return root
   const absolute = path.resolve(cwd)
   if (absolute === path.parse(absolute).root) return null
-  try { return (await stat(absolute)).isDirectory() ? absolute : null } catch { return null }
+  try { if (!(await stat(absolute)).isDirectory()) return null } catch { return null }
+  return await findRepoRoot(absolute) ?? absolute
 }
 
 /**

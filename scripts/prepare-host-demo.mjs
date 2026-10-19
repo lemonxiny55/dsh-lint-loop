@@ -10,12 +10,13 @@ const config = { runtime: path.resolve('.cache/dsh021'), dependencies: path.reso
 await writeFile(path.join(dir, 'config.json'), JSON.stringify(config))
 const driver = `import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {runDemo} from ${JSON.stringify(pathToFileURL(path.resolve('scripts/dsh-runtime-demo.mjs')).href)};
+import {runShellDemo} from ${JSON.stringify(pathToFileURL(path.resolve('scripts/dsh-shell-demo.mjs')).href)};
 export const name='evidence-demo-driver';
 export const inject=['agentLoop','tools','agents','llm','fs','workingDirectory'];
 export function apply(ctx){
  const timer=setTimeout(async()=>{
   const config=JSON.parse(await readFile(${JSON.stringify(path.join(dir, 'config.json'))},'utf8'));
-  try{await runDemo(ctx,config);await writeFile(config.output+'/completed.json',JSON.stringify({passed:true,agentDisposed:true}))}catch(error){await mkdir(config.output,{recursive:true});await writeFile(config.output+'/failure.json',JSON.stringify({error:String(error),stack:error.stack}));console.error('[evidence-demo] failed: '+error.message)}
+  try{const demo=await runDemo(ctx,config);await runShellDemo(ctx,{root:demo.root,output:config.output});await writeFile(config.output+'/completed.json',JSON.stringify({passed:true,agentDisposed:true}))}catch(error){await mkdir(config.output,{recursive:true});await writeFile(config.output+'/failure.json',JSON.stringify({error:String(error),stack:error.stack}));console.error('[evidence-demo] failed: '+error.message)}
  },2000);
  return()=>clearTimeout(timer);
 }

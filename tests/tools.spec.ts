@@ -1,5 +1,6 @@
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
+import path from 'node:path'
 import { applyConfig } from '../src/config.js'
 import { invalidateProbes } from '../src/detect.js'
 import { disposeAllManagers, managerForRoot } from '../src/manager.js'
@@ -188,8 +189,10 @@ describe('lint_diagnostics', () => {
   })
 
   it('returns a friendly error when no workspace exists', async () => {
+    const repo = await makeFixtureRepo()
     applyConfig({ linterPath: { eslint: FAKE, biome: FAKE, ruff: FAKE } })
-    const value = await run(lintDiagnostics, { file: 'x.ts', repoRoot: '/tmp' }, '/tmp') as Array<Record<string, unknown>>
+    const missing = path.join(repo.root, 'missing-workspace')
+    const value = await run(lintDiagnostics, { file: 'x.ts', repoRoot: missing }, missing) as Array<Record<string, unknown>>
     expect(String(value[0].error)).toContain('no workspace found')
   })
 })

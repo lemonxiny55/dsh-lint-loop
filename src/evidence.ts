@@ -169,7 +169,7 @@ function append(state: State, changes: ChangeEvidence[]): void {
 export interface ExecutionCheckpoint { root: string; state: State; before: Snapshot; tool: string; target?: string; targets?: string[]; changes?: ChangeEvidence[]; commit?: { before: string | null; after: string } }
 export function finalizeCheckpoint(checkpoint: ExecutionCheckpoint, result: unknown): void {
   if (result && typeof result === 'object' && (result as { isError?: boolean }).isError) {
-    for (const change of checkpoint.changes ?? []) { change.outcome = 'failure'; change.attribution = 'unattributed' }
+    for (const change of checkpoint.changes ?? []) { if (change.outcome !== 'cancelled') change.outcome = 'failure'; change.attribution = 'unattributed' }
     if (checkpoint.changes?.length) checkpoint.state.reasons.add('authoritative tool result failed after filesystem effects')
   }
 }

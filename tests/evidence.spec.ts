@@ -323,4 +323,16 @@ describe('real shell execution windows', () => {
       expect((await verifyQuality(f.repo.root, f.owner)).finalVerdict).toBe('incomplete')
     } finally { mounted.dispose() }
   })
+  it('records a canonical nonzero shell exit as failure even when tool dispatch succeeded', async () => {
+    const f = await fixture(), mounted = mount()
+    try {
+      await mounted.execute({ ...f.actor, name: 'pwsh', arguments: {} }, async () => {
+        await f.repo.write('partial.js', 'export const partial = 1')
+        return { isError: false, value: { kind: 'foreground', exitCode: 7, aborted: false, timedOut: false } }
+      })
+      const receipt = await verifyQuality(f.repo.root, f.owner)
+      expect(receipt.finalVerdict).toBe('incomplete')
+      expect(receipt.evidenceCoverage.changes[0]).toMatchObject({ file: 'partial.js', outcome: 'failure', attribution: 'unattributed' })
+    } finally { mounted.dispose() }
+  })
 })
