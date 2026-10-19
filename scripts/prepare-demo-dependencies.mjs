@@ -1,4 +1,4 @@
-// Explicit package boundaries prevent npm 10 from inspecting the parent's pnpm tree.
+// Declare explicit package boundaries for the isolated demo installations.
 import { mkdir, writeFile } from 'node:fs/promises'
 for (const name of ['dsh021', 'demo-v070']) {
   const directory = new URL(`../.cache/${name}/`, import.meta.url)

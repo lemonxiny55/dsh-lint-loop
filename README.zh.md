@@ -85,6 +85,9 @@ Quality Loop：安全修复新 lint → 检测新类型/测试失败 → 有上�
 
 原有配置兼容；高级字段覆盖 preset。新增 `completionChecks`、`qualityTimeoutMs`、`qualityMaxFiles`（2000）、`qualityMaxChecks`（32）。Node 22/24 与现有 DSH 0.1/0.2 peer 范围保留。
 
+Evidence Integrity 另有 `trackingTimeoutMs`（每次只读扫描 2000ms）、`trackingMaxBytes`（共享 32MiB）
+和 `trackingMaxFileBytes`（单文件 2MiB）。达到预算会明确标记证据不完整；不会缩小范围后宣称 CLEAN。
+
 ## 工具与 UI
 
 新增 `quality_verify`（只读完整验证）和 `quality_receipt`（读取最后回执）；保留 `lint_status`、`lint_repair`、`lint_diagnostics`、`lint_workspace_errors`、`lint_fix`。

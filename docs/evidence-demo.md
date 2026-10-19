@@ -3,6 +3,11 @@
 All commands below run from the repository root. Use Node 22 or 24. No npm
 publication, Release or merge is needed.
 
+Use npm 11.17.0 for the auxiliary installs below (CI pins it explicitly). The
+Node 22 bundled npm 10.9.9 crashed with `edgesOut` on the demo dependency graph;
+that installation failure was not counted as a passing demo. Node runtime tests
+still execute separately on Node 22 and 24.
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm build

@@ -28,7 +28,9 @@ property access in the first experiment; import-only mocks did not expose it.
 
 ## Model
 
-State is keyed by session identity and canonical absolute workspace root. A Git
+State is keyed by session identity and normalized absolute workspace root. Scans
+anchor the explicit root to its physical spelling, accepting Windows case/8.3
+aliases while rejecting a symbolic-link root. A Git
 worktree's `.git` file is supported; no Git metadata is modified. Explicit
 session roots also support non-Git directories; filesystem roots are rejected.
 
@@ -106,11 +108,11 @@ Actual Windows / Node 24.19.0 medians in milliseconds:
 
 | Source files | v0.6 first edit | v0.7 first edit | v0.6 repeat | v0.7 repeat |
 |---:|---:|---:|---:|---:|
-| 100 | 84.27 | 105.43 | 1.21 | 37.11 |
-| 1000 | 73.94 | 408.55 | 1.10 | 309.80 |
+| 100 | 66.46 | 141.68 | 0.71 | 43.79 |
+| 1000 | 67.96 | 685.39 | 1.25 | 367.16 |
 
 The initial serial implementation measured 1044.15 ms for a repeated 1000-file
-edit; four bounded readers reduced that median to 309.80 ms (about 70%). The
+edit; the final four-reader implementation reduced that median to 367.16 ms (about 65%). The
 candidate still costs more than v0.6, which did not inventory those files. Raw
 [serial](release-evidence/v0.7.0/benchmark-serial-node24.json) and
 [optimized](release-evidence/v0.7.0/benchmark-node24.json) samples preserve

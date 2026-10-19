@@ -28,6 +28,8 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: node scripts/compat-smoke.mjs
+      - name: Pin auxiliary installer (npm 10 crashes on the demo dependency graph)
+        run: npm install --global npm@11.17.0 --no-audit --no-fund
       - name: Install exact published DSH and real demo toolchain
         run: |
           node scripts/prepare-demo-dependencies.mjs

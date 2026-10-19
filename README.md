@@ -130,6 +130,8 @@ Use `balanced` unless you have a reason to change it. Override the existing `lin
 | `qualityTimeoutMs` | preset | total budget for each baseline, completion or repair sweep |
 | `qualityMaxFiles` | `2000` | discovery entry budget, including directories |
 | `qualityMaxChecks` | `32` | maximum package typecheck/test attempts per sweep |
+| `trackingTimeoutMs` | `2000` | cooperative time budget per read-only source checkpoint |
+| `trackingMaxBytes`, `trackingMaxFileBytes` | `33554432`, `2097152` | shared scan and individual file byte limits |
 | `gate`, `gateMaxSteers`, `gateSeverity` | `true`, `2`, `error` | bounded continuation and lint severity |
 | `autoInject`, `settleMs`, `sectionTtlMs`, `sectionSeverity` | `true`, `600`, `30000`, `error` | post-edit prompt feedback |
 | `linters`, `linterPath` | auto, `{}` | existing linter selection and executable overrides |
