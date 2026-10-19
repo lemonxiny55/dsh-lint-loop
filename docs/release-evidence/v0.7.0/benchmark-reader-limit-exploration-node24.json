@@ -1,7 +1,7 @@
 {
   "node": "v24.19.0",
   "platform": "win32",
-  "protocol": "one warmup + 5 samples; scenarios=shell-batch-lifecycle; Quality Receipt scope assertions and before/after semantics equality; 5ms memory sampling; completionChecks=false",
+  "protocol": "one warmup + 5 samples; scenarios=shell-batch-lifecycle; Quality Receipt scope assertions and before/after semantics equality; 5ms memory sampling; completionChecks=false; shell-batch-lifecycle applies deterministic edits in the exec event callback without child-shell startup",
   "results": [
     {
       "entry": ".cache\\benchmark-readers\\8\\index.mjs",

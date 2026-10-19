@@ -84,11 +84,11 @@
       "acceptanceCapturedAt": "2026-10-19T12:11:01.622Z"
     }
   },
-  "capturedAt": "2026-10-19T13:26:36.114Z",
+  "capturedAt": "2026-10-19T13:38:55.849Z",
   "note": "Web/Desktop acceptance records below refer to the original four-reader bundle. The optimized eight-reader package was built and packed locally, not published or installed to those applications; the updated PR CI verifies the optimized source across its platform/runtime matrix.",
   "evidenceFiles": {
-    "docs/release-evidence/v0.7.0/benchmark-optimization-node24.json": "4f8a0c76d1cdae5604b0d6a05d4cdbae71c97fd3c045be2da53c69b99c8f84c4",
-    "docs/release-evidence/v0.7.0/benchmark-reader-limit-exploration-node24.json": "d87d5be5a9feded2fcbd08335e72c048b4f8d944f08d7d37fd28b99778fb03d1",
+    "docs/release-evidence/v0.7.0/benchmark-optimization-node24.json": "1f93c880d420442367d567ed4fa7abd827023838c8e1d201c7db3fa3131aad6b",
+    "docs/release-evidence/v0.7.0/benchmark-reader-limit-exploration-node24.json": "d78d99d25e92af0560fd6f7b73447519d46e8aa049a6fdb5060944f012366584",
     "docs/release-evidence/v0.7.0/package-manifest.json": "ae14d90fe2090cc52128292252454aca41c91b7db29a3ef9d7f9ea03ce0678ca"
   }
 }

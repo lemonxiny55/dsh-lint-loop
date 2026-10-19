@@ -117,7 +117,10 @@ normalizing workspace paths, timestamps and elapsed durations. It covers 100- an
 1000-file fixtures for continuous single-file edits and shell batch edits that
 modify ten files, add one, delete one and rename one (reported as delete+add).
 Batch receipts remained `incomplete` with changes marked `unattributed`, as
-required for a general shell execution. The [eight-versus-sixteen reader exploration](benchmark-reader-limit-exploration-node24.json)
+required for a general shell execution. The performance fixture applies this batch
+inside a deterministic `exec` event callback to isolate checkpoint overhead; it does
+not include shell child-process startup. Real shell/bash/pwsh behavior is exercised
+separately by the test suite and cross-platform CI. The [eight-versus-sixteen reader exploration](benchmark-reader-limit-exploration-node24.json)
 records the memory trade-off. Memory is peak heap/RSS delta sampled after forced GC;
 RSS P95 varies with allocator retention and is an observed run result, not a
 per-check allocation guarantee. The earlier [raw comparison](benchmark-node24.json)
