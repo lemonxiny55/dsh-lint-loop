@@ -8,15 +8,20 @@ import { managerForRoot } from './manager.js'
 import { executeChecks, type CheckEvidence } from './quality-checks.js'
 import { discoverQualityPlan, staticImpactProvider, type ImpactProvider, type TestSelection } from './quality-plan.js'
 import { normalizeDrive, resolveFileInRoot, toRelative } from './workspace.js'
+import { anchorEvidence, auditCoverage, clearEvidence, disposeEvidence, evidenceFiles, hasEvidence, snapshotWorkspace, snapshotChanges, snapshotDigest, type EvidenceCoverage } from './evidence.js'
 
 export type QualityStatus = 'clean' | 'regression' | 'incomplete' | 'skipped'
 export interface QualityIssue { check: string; identity: string }
 export interface QualityReceipt {
   schemaVersion: 1
+  verifiedAt: string
+  evidenceCoverage: EvidenceCoverage
   mode: 'fast' | 'balanced' | 'strict'
   root: string
   changedFiles: string[]
   newlyIntroducedRegressions: QualityIssue[]
+  /** Diagnostics observed with incomplete attribution; never blamed on the agent. */
+  unattributedFindings: QualityIssue[]
   autoFixed: QualityIssue[]
   agentFixed: QualityIssue[]
   ignoredHistoricalDebt: QualityIssue[]
@@ -35,6 +40,7 @@ export interface QualityReceipt {
 interface State {
   controller: AbortController
   baseline?: Promise<CheckEvidence[]>
+  baselineReasons?: string[]
   receipt?: QualityReceipt
   seen: QualityIssue[]
   autoFixed: QualityIssue[]
@@ -70,7 +76,17 @@ export async function prepareQualityBaseline(root: string, owner?: BaselineOwner
   state.baseline = (async () => {
     const budget = boundedSignal(state.controller.signal, caller)
     const deadline = Date.now() + getConfig().qualityTimeoutMs
-    try { return await executeChecks(await discoverQualityPlan(root), undefined, budget.signal, deadline) }
+    try {
+      const before = await snapshotWorkspace(root, budget.signal)
+      const plan = await discoverQualityPlan(root)
+      const checks = await executeChecks(plan, undefined, budget.signal, deadline)
+      const after = await snapshotWorkspace(root, budget.signal)
+      anchorEvidence(root, owner, after)
+      state.baselineReasons = [...before.reasons, ...after.reasons, ...plan.reasons]
+      if (snapshotChanges(before, after).length) state.baselineReasons.push('workspace changed during baseline checks; baseline attribution unavailable')
+      if (state.baselineReasons.length) for (const check of checks) { check.status = 'failed'; check.reason = 'baseline integrity incomplete' }
+      return checks
+    }
     finally { budget.dispose() }
   })()
   await state.baseline
@@ -111,7 +127,22 @@ export function qualityReceipt(root: string, owner?: BaselineOwner): QualityRece
   const receipt = getState(root, owner).receipt
   return receipt ? structuredClone(receipt) : undefined
 }
+/** Tool-facing read: retain evidence, but invalidate a stale CLEAN against current bytes. */
+export async function currentQualityReceipt(root: string, owner?: BaselineOwner): Promise<QualityReceipt | undefined> {
+  const receipt = qualityReceipt(root, owner)
+  if (!receipt) return undefined
+  const current = await snapshotWorkspace(root)
+  const active = hasEvidence(root, owner) ? await auditCoverage(root, owner) : undefined
+  if (!current.complete || snapshotDigest(current) !== receipt.evidenceCoverage.digest || active?.status === 'incomplete') {
+    receipt.finalVerdict = 'incomplete'
+    receipt.evidenceCoverage.status = 'incomplete'
+    receipt.evidenceCoverage.reasons.push('receipt is stale or current coverage incomplete; run quality_verify again', ...current.reasons, ...(active?.reasons ?? []))
+    receipt.reasons.push('saved verification does not establish current workspace integrity')
+  }
+  return receipt
+}
 export function clearQualityTurn(owner?: BaselineOwner): void {
+  clearEvidence(owner)
   const roots = states.get(owner ?? GLOBAL)
   // Keep the final receipt; drop turn-specific baselines and repair accounting.
   for (const [root, state] of roots ?? []) {
@@ -121,6 +152,7 @@ export function clearQualityTurn(owner?: BaselineOwner): void {
   }
 }
 export function disposeQuality(): void {
+  disposeEvidence()
   generation++
   for (const roots of states.values()) for (const state of roots.values()) state.controller.abort()
   states.clear()
@@ -134,18 +166,26 @@ export async function verifyQuality(root: string, owner?: BaselineOwner, options
   const epoch = generation
   state.pending = (async () => {
     const started = Date.now(), config = getConfig()
-    const files = [...new Set([...(options.files ?? []), ...turnEditedFiles(owner)])].map((f) => resolveFileInRoot(root, f)).filter((f): f is string => !!f).sort()
+    const coverage = await auditCoverage(root, owner)
+    if (state.baselineReasons?.length) { coverage.status = 'incomplete'; coverage.reasons.push(...state.baselineReasons) }
+    const requested = [...(options.files ?? []), ...turnEditedFiles(owner).filter((f) => resolveFileInRoot(root, f)), ...evidenceFiles(root, owner)]
+    if (requested.some((f) => !resolveFileInRoot(root, f))) { coverage.status = 'incomplete'; coverage.reasons.push('requested file outside workspace scope') }
+    const files = [...new Set(requested)].map((f) => resolveFileInRoot(root, f)).filter((f): f is string => !!f).sort()
     const receipt: QualityReceipt = {
-      schemaVersion: 1, mode: config.mode, root, changedFiles: files.map((f) => toRelative(f, root)),
-      newlyIntroducedRegressions: [], autoFixed: [...state.autoFixed], agentFixed: [], ignoredHistoricalDebt: [],
+      schemaVersion: 1, verifiedAt: new Date().toISOString(), evidenceCoverage: coverage, mode: config.mode, root, changedFiles: files.map((f) => toRelative(f, root)),
+      newlyIntroducedRegressions: [], unattributedFindings: [], autoFixed: [...state.autoFixed], agentFixed: [], ignoredHistoricalDebt: [],
       lint: 'clean', typecheck: 'skipped', tests: 'skipped', selection: { strategy: 'dependency', files: [], reasons: [], complete: true },
       checksExecuted: [], baselineChecks: [], repairRounds: state.repairRounds, continuationRounds: options.continuationRounds ?? 0, elapsedMs: 0, finalVerdict: 'clean', reasons: [],
     }
     const budget = boundedSignal(state.controller.signal, options.signal)
     const deadline = started + config.qualityTimeoutMs
     try {
+      const validationStart = await snapshotWorkspace(root, budget.signal)
+      if (!validationStart.complete) { coverage.status = 'incomplete'; coverage.reasons.push(...validationStart.reasons) }
       for (const file of files) {
-        if (!linterFamilyForExt(extOf(file))) continue
+        if (!linterFamilyForExt(extOf(file))) {
+          receipt.lint = 'incomplete'; receipt.reasons.push(`no supported lint coverage: ${toRelative(file, root)}`); continue
+        }
         const check: CheckEvidence = { id: `lint:${toRelative(file, root)}`, kind: 'lint', scope: toRelative(file, root), command: 'configured linter', args: [file], status: 'complete', issues: [], executed: [], elapsedMs: 0 }
         receipt.checksExecuted.push(check)
         const begin = Date.now()
@@ -205,9 +245,18 @@ export async function verifyQuality(root: string, owner?: BaselineOwner, options
         })
       })
       state.seen = union(state.seen, receipt.newlyIntroducedRegressions)
+      const validationEnd = await snapshotWorkspace(root, budget.signal)
+      if (!validationEnd.complete || snapshotChanges(validationStart, validationEnd).length) {
+        coverage.status = 'incomplete'; coverage.reasons.push('workspace changed or could not be read throughout verification', ...validationEnd.reasons)
+      }
+      if (coverage.status !== 'complete') {
+        receipt.unattributedFindings = receipt.newlyIntroducedRegressions.splice(0)
+        receipt.agentFixed = []
+      }
+      receipt.reasons.push(...coverage.reasons)
       receipt.finalVerdict = options.signal?.aborted || state.controller.signal.aborted ? 'cancelled'
         : receipt.newlyIntroducedRegressions.length ? 'regression'
-          : [receipt.lint, receipt.typecheck, receipt.tests].some((s) => s === 'incomplete' || s === 'skipped') ? 'incomplete' : 'clean'
+          : coverage.status !== 'complete' || [receipt.lint, receipt.typecheck, receipt.tests].some((s) => s === 'incomplete' || s === 'skipped') ? 'incomplete' : 'clean'
       if (receipt.finalVerdict === 'regression' && options.continuationLimit !== undefined && receipt.continuationRounds >= options.continuationLimit) receipt.reasons.push('continuation budget exhausted; the agent may stop but the change is still a regression')
       return receipt
     } catch (error) { receipt.finalVerdict = 'incomplete'; receipt.reasons.push(String(error)); return receipt }

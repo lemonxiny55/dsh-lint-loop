@@ -90,9 +90,15 @@ import { disposeAllManagers } from './manager.js'
 import { createLintSection } from './section.js'
 import { tools } from './tools.js'
 import { disposeQuality } from './quality.js'
+import { prepareQualityBaseline } from './quality.js'
+import { beginCheckpoint, endCheckpoint, confirmToolCommit, finalizeCheckpoint, type ExecutionCheckpoint } from './evidence.js'
+import { findWorkspaceRoot } from './workspace.js'
+import path from 'node:path'
 import {
   cancelToolMutation,
+  actorCwd,
   bindActorCwd,
+  endMutationDispatch,
   finishObservedMutation,
   prepareMutation,
   recordSuccessfulToolMutation,
@@ -127,6 +133,7 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
     }
 
     if (typeof ctx.on === 'function') {
+      const executions = new WeakMap<object, ExecutionCheckpoint>()
       const offEnded = ctx.on('session/event', (...args: unknown[]) => {
         const session = args[0]
         const event = args[1] as { type?: string } | undefined
@@ -135,14 +142,15 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
       if (offEnded) disposers.push(offEnded)
 
       const onToolExecute = async (...args: unknown[]): Promise<unknown> => {
-        const execution = args[0] as { name?: string; arguments?: unknown; agent?: { session?: object } } | undefined
+        const execution = args[0] as { name?: string; arguments?: unknown; agent?: { session?: object }; signal?: AbortSignal } | undefined
         const next = args[1]
-        const session = execution?.agent?.session
-        const workingDirectory = (typeof ctx.get === 'function' ? ctx.get('workingDirectory') : ctx.workingDirectory) as MinimalContext['workingDirectory']
-        if (execution && session && workingDirectory) bindActorCwd(execution, workingDirectory.get(session))
-        if ((execution?.name !== 'edit' && execution?.name !== 'write') || typeof next !== 'function') {
+        if (!execution || typeof next !== 'function') {
           return typeof next === 'function' ? (next as () => unknown)() : undefined
         }
+        const session = execution.agent?.session
+        const workingDirectory = (typeof ctx.get === 'function' ? ctx.get('workingDirectory') : ctx.workingDirectory) as MinimalContext['workingDirectory']
+        if (session && workingDirectory) bindActorCwd(execution, workingDirectory.get(session))
+        if (!execution.name || /^(?:quality_|lint_)/.test(execution.name)) return (next as () => unknown)()
         const callArgs = execution.arguments && typeof execution.arguments === 'object'
           ? execution.arguments as { file_path?: unknown; file?: unknown }
           : undefined
@@ -151,33 +159,61 @@ export function apply(ctx: MinimalContext, pluginConfig?: PluginConfig) {
           : typeof callArgs?.file === 'string'
             ? callArgs.file
             : undefined
-        if (!filePath) return (next as () => unknown)()
+        const direct = execution.name === 'edit' || execution.name === 'write'
+        const cwd = actorCwd(execution)
+        const root = cwd ? await findWorkspaceRoot(cwd) : undefined
+        // Preserve v0.6 direct-tool semantics. Broader observations never enter repair scope.
+        if (direct && filePath) await prepareMutation(filePath, execution, true).catch(() => undefined)
+        else if (root) await prepareQualityBaseline(root, ownerFromActor(execution), execution.signal).catch(() => undefined)
+        const checkpoint = root ? await beginCheckpoint(root, ownerFromActor(execution), execution.name,
+          direct && filePath ? path.resolve(cwd!, filePath) : undefined, execution.signal).catch(() => undefined) : undefined
+        if (checkpoint) executions.set(execution, checkpoint)
+        let outcome: 'success' | 'failure' | 'cancelled' = 'failure'
 
         // tools/execute wraps the actual file tool: capture before dispatch,
         // then track only a successful mutation. Lint failures never block it.
-        await prepareMutation(filePath, execution).catch(() => undefined)
         try {
           const result = await (next as () => Promise<unknown>)()
           const isError = !!result && typeof result === 'object'
             && (result as { isError?: unknown }).isError === true
           if (isError) {
-            await cancelToolMutation(filePath, execution).catch(() => undefined)
+            if (direct) await cancelToolMutation(filePath, execution).catch(() => undefined)
             return result
           }
-          const mutation = await recordSuccessfulToolMutation(filePath, execution).catch(() => null)
+          outcome = 'success'
+          if (direct && checkpoint) confirmToolCommit(checkpoint, result)
+          const mutation = direct ? await recordSuccessfulToolMutation(filePath, execution).catch(() => null) : null
           if (mutation) {
-            if (isLinterConfigBasename(basenameOf(filePath))) invalidateProbes()
+            if (isLinterConfigBasename(basenameOf(mutation.abs))) invalidateProbes()
             section?.handleObserved(mutation.abs, mutation.owner)
             markDirty(mutation.abs, mutation.owner)
           }
           return result
         } catch (error) {
-          await cancelToolMutation(filePath, execution).catch(() => undefined)
+          if (direct) await cancelToolMutation(filePath, execution).catch(() => undefined)
           throw error
+        } finally {
+          endMutationDispatch(execution)
+          if (checkpoint) {
+            const changes = await endCheckpoint(checkpoint, execution.signal?.aborted ? 'cancelled' : outcome).catch(() => [])
+            for (const change of changes) {
+              const abs = path.resolve(root!, change.file)
+              if (isLinterConfigBasename(basenameOf(abs))) invalidateProbes()
+              markDirty(abs, ownerFromActor(execution))
+            }
+          }
         }
       }
       const offToolExecute = ctx.on('tools/execute', onToolExecute) as (() => void) | undefined
       if (offToolExecute) disposers.push(offToolExecute)
+      const offToolResult = ctx.on('tools/result', (...args: unknown[]) => {
+        const execution = args[0]
+        if (!execution || typeof execution !== 'object') return
+        const checkpoint = executions.get(execution)
+        if (checkpoint) finalizeCheckpoint(checkpoint, args[1])
+        executions.delete(execution)
+      }) as (() => void) | undefined
+      if (offToolResult) disposers.push(offToolResult)
 
       const onMutationIntent = (...args: unknown[]): unknown => {
         const target = args[0] as { displayPath?: string } | undefined

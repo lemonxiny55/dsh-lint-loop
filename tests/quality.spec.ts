@@ -107,7 +107,10 @@ describe('Quality Loop evidence', () => {
     const f = await fixture()
     await f.repo.write('tests/a.spec.ts', 'import { a } from "../src/a.js"\n// case: old FAIL old symptom\n')
     await edit(f, 'export const a = 2\n// type: TS2322 new type error\n')
+    const testFile = path.join(f.repo.root, 'tests/a.spec.ts')
+    await prepareMutation(testFile, f.actor)
     await f.repo.write('tests/a.spec.ts', 'import { a } from "../src/a.js"\n// case: old FAIL new symptom\n// case: fresh FAIL new assertion\n')
+    await recordSuccessfulToolMutation(testFile, f.actor)
     const receipt = await verifyQuality(f.repo.root, f.owner)
     expect(receipt.finalVerdict).toBe('regression')
     expect(receipt.newlyIntroducedRegressions.map((i) => i.check)).toEqual(['typecheck:.', 'tests:.', 'tests:.'])
@@ -131,7 +134,7 @@ describe('Quality Loop evidence', () => {
     await handleTurnStopping({ agent, turn: 1 })
     await handleTurnStopping({ agent, turn: 1 }) // no fresh dirty event: still verifies this turn
     expect(agent.steer).toHaveBeenCalledTimes(2)
-    await f.repo.write('src/a.ts', 'export const a = 2\n')
+    await edit(f, 'export const a = 2\n')
     await handleTurnStopping({ agent, turn: 1 })
     const receipt = qualityReceipt(f.repo.root, f.owner)!
     expect(receipt.finalVerdict).toBe('clean')
@@ -244,7 +247,9 @@ describe('Quality Loop evidence', () => {
     expect(qualityReceipt(f.repo.root, f.owner)).toBeUndefined()
     await f.repo.write('src/a.ts', 'export const a = 3\n')
     await prepareQualityBaseline(f.repo.root, f.owner)
-    expect((await verifyQuality(f.repo.root, f.owner)).finalVerdict).toBe('clean')
+    const untracked = await verifyQuality(f.repo.root, f.owner)
+    expect(untracked.finalVerdict).toBe('incomplete')
+    expect(untracked.evidenceCoverage.reasons).toContain('no execution checkpoints available')
   })
 
   it('shares concurrent verification and returns detached receipt snapshots', async () => {

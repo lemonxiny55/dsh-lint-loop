@@ -187,10 +187,10 @@ describe('lint_diagnostics', () => {
     }
   })
 
-  it('returns a friendly error when no git repository exists', async () => {
+  it('returns a friendly error when no workspace exists', async () => {
     applyConfig({ linterPath: { eslint: FAKE, biome: FAKE, ruff: FAKE } })
     const value = await run(lintDiagnostics, { file: 'x.ts', repoRoot: '/tmp' }, '/tmp') as Array<Record<string, unknown>>
-    expect(String(value[0].error)).toContain('no git repository found')
+    expect(String(value[0].error)).toContain('no workspace found')
   })
 })
 

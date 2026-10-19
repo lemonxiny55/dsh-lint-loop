@@ -8,8 +8,35 @@
 
 Compare the agent's changes with evidence captured **before the first edit**. Keep historical failures visible, repair new lint regressions safely, and verify types and impacted tests before completion.
 
-**v0.6.0 — Quality Loop**
+**v0.7.0 — Evidence Integrity (unreleased candidate)**
 English | [中文](README.zh.md)
+
+Bounded, read-only content checkpoints now cover shell/bash/pwsh, custom scripts,
+additions, deletions and cross-directory renames (reported conservatively as
+delete/add). Existing edit/write repair semantics remain. Temporal observation
+does **not** establish authorship: external or ambiguous changes enter verification
+scope but never become automatic repair targets. Missing, stale or partial evidence
+is `incomplete`, even when the checks that did execute passed.
+
+The additive `evidenceCoverage` receipt field records scope, exclusions, SHA-256
+content identities, attribution, actual outcomes, budgets and uncertainty. Direct
+DSH commits are checked against their canonical before/after bytes. A saved receipt
+is checked for staleness before the `quality_receipt` tool displays it.
+
+Build and install this candidate locally; it is **not published to npm**:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+npm pack --ignore-scripts
+dsh plugin --profile web add /absolute/path/dsh-lint-loop-0.7.0-rc.0.tgz
+```
+
+[Architecture, limits and experiments](docs/evidence-integrity.md) ·
+[Candidate verification](docs/release-evidence/v0.7.0/verification.md) ·
+[Reproduce the actual DSH lifecycle demo](docs/evidence-demo.md).
+
+**Released v0.6.0 installation and historical demo:**
 
 ```sh
 dsh plugin --profile web add dsh-lint-loop@0.6.0

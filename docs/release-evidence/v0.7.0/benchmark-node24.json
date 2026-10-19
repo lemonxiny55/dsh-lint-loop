@@ -1,0 +1,119 @@
+{
+  "node": "v24.19.0",
+  "platform": "win32",
+  "protocol": "one warmup + five samples; three edits; actual protocol linter, completionChecks=false",
+  "results": [
+    {
+      "entry": ".cache/upstream/dist/index.js",
+      "files": 100,
+      "firstEditMedianMs": 84.26639999999998,
+      "repeatEditMedianMs": 1.2099499999999352,
+      "samples": [
+        {
+          "firstEditMs": 530.3666,
+          "repeatEditMs": 1.7341500000001133
+        },
+        {
+          "firstEditMs": 99.66750000000002,
+          "repeatEditMs": 1.2288500000000795
+        },
+        {
+          "firstEditMs": 84.26639999999998,
+          "repeatEditMs": 0.9166000000000167
+        },
+        {
+          "firstEditMs": 76.73670000000016,
+          "repeatEditMs": 1.2099499999999352
+        },
+        {
+          "firstEditMs": 82.95630000000006,
+          "repeatEditMs": 1.148050000000012
+        }
+      ]
+    },
+    {
+      "entry": ".cache/upstream/dist/index.js",
+      "files": 1000,
+      "firstEditMedianMs": 73.9353000000001,
+      "repeatEditMedianMs": 1.099250000000211,
+      "samples": [
+        {
+          "firstEditMs": 73.9353000000001,
+          "repeatEditMs": 1.1150499999998829
+        },
+        {
+          "firstEditMs": 70.94200000000001,
+          "repeatEditMs": 0.8989500000002408
+        },
+        {
+          "firstEditMs": 72.91800000000057,
+          "repeatEditMs": 1.0815999999999804
+        },
+        {
+          "firstEditMs": 81.09870000000046,
+          "repeatEditMs": 1.3810000000003129
+        },
+        {
+          "firstEditMs": 77.34100000000035,
+          "repeatEditMs": 1.099250000000211
+        }
+      ]
+    },
+    {
+      "entry": "dist/index.js",
+      "files": 100,
+      "firstEditMedianMs": 105.43209999999999,
+      "repeatEditMedianMs": 37.11414999999988,
+      "samples": [
+        {
+          "firstEditMs": 103.23599999999988,
+          "repeatEditMs": 37.11414999999988
+        },
+        {
+          "firstEditMs": 104.92409999999927,
+          "repeatEditMs": 33.99290000000019
+        },
+        {
+          "firstEditMs": 119.07249999999931,
+          "repeatEditMs": 43.043600000000424
+        },
+        {
+          "firstEditMs": 105.43209999999999,
+          "repeatEditMs": 36.48080000000027
+        },
+        {
+          "firstEditMs": 106.12700000000041,
+          "repeatEditMs": 37.312900000000354
+        }
+      ]
+    },
+    {
+      "entry": "dist/index.js",
+      "files": 1000,
+      "firstEditMedianMs": 408.5491000000002,
+      "repeatEditMedianMs": 309.8012499999977,
+      "samples": [
+        {
+          "firstEditMs": 431.9142000000011,
+          "repeatEditMs": 335.9267
+        },
+        {
+          "firstEditMs": 408.5491000000002,
+          "repeatEditMs": 282.99734999999964
+        },
+        {
+          "firstEditMs": 386.768399999999,
+          "repeatEditMs": 334.27135
+        },
+        {
+          "firstEditMs": 393.3230000000003,
+          "repeatEditMs": 309.34659999999985
+        },
+        {
+          "firstEditMs": 421.2451000000001,
+          "repeatEditMs": 309.8012499999977
+        }
+      ]
+    }
+  ]
+}

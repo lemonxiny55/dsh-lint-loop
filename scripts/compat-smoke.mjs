@@ -15,11 +15,11 @@ for (let mount = 0; mount < 2; mount++) {
     on(name) { listeners.push(name); return () => listenersDisposed++ },
   })
   assert.deepEqual(registered, names)
-  assert.equal(listeners.length, 6)
+  assert.equal(listeners.length, 7)
   assert.match(plugin.tools[0].presentCall({}).title, /running/)
   dispose()
   assert.equal(toolsDisposed, 7)
-  assert.equal(listenersDisposed, 6)
+  assert.equal(listenersDisposed, 7)
   assert.equal(sectionsDisposed, 1)
 }
 console.log(`Compatibility smoke passed: ${entry}; seven tools; native presenter; dispose/remount; ${process.version}`)

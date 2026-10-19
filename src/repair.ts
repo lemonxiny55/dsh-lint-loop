@@ -8,6 +8,7 @@ import { managerForRoot, type BatchFixResult } from './manager.js'
 import { normalizeDrive } from './workspace.js'
 import { recordQualityRepair, qualityRepairRounds } from './quality.js'
 import { getConfig } from './config.js'
+import { auditCoverage, beginCheckpoint, endCheckpoint, hasEvidence } from './evidence.js'
 
 export const REPAIR_MAX_ROUNDS = 2
 
@@ -64,6 +65,10 @@ export async function repairTurn(root: string, owner: BaselineOwner | undefined,
     preExistingIssuesIgnored: [], stoppedBecause,
   })
   if (files.length === 0) return empty('no-turn-files')
+  if (hasEvidence(root, owner) && (await auditCoverage(root, owner)).status !== 'complete') return {
+    ...empty('baseline-unavailable'), affectedFiles: files.map((file) => toRelative(normalizedRoot, file)),
+    skippedFixers: ['evidence coverage incomplete; uncertain changes cannot be safely attributed for repair'],
+  }
   if (files.some((file) => !hasAuthoritativeBaseline(owner, file))) return {
     ...empty('baseline-unavailable'), affectedFiles: files.map((file) => toRelative(normalizedRoot, file)),
     skippedFixers: ['pre-edit lint baseline unavailable; no safe repair attribution'],
@@ -89,7 +94,11 @@ export async function repairTurn(root: string, owner: BaselineOwner | undefined,
   while (remaining.length > 0 && rounds < availableRounds && !signal?.aborted) {
     const candidateFiles = [...new Set(remaining.map((finding) => path.resolve(normalizedRoot, finding.file)))]
     rounds++
-    const results = await manager.fixMany(candidateFiles, remaining, signal)
+    const checkpoint = await beginCheckpoint(root, owner, 'edit', undefined, signal)
+    checkpoint.targets = candidateFiles.map((file) => toRelative(normalizedRoot, file))
+    let results
+    try { results = await manager.fixMany(candidateFiles, remaining, signal) }
+    finally { await endCheckpoint(checkpoint, signal?.aborted ? 'cancelled' : 'success') }
     for (const result of results) {
       const { before, after, fixerIntroducedRegressions: introducedByFixer, ...run } = result
       allRuns.push(run)

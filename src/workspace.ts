@@ -1,6 +1,6 @@
 /** Workspace resolution and file↔path helpers. */
 
-import { stat } from 'node:fs/promises'
+import { stat, lstat, realpath } from 'node:fs/promises'
 import path from 'node:path'
 
 /**
@@ -27,6 +27,15 @@ export async function findRepoRoot(startDir: string, maxLevels = 12): Promise<st
   return null
 }
 
+/** Explicit session roots permit non-Git workspaces; never guess a filesystem root. */
+export async function findWorkspaceRoot(cwd: string): Promise<string | null> {
+  const root = await findRepoRoot(cwd)
+  if (root) return root
+  const absolute = path.resolve(cwd)
+  if (absolute === path.parse(absolute).root) return null
+  try { return (await stat(absolute)).isDirectory() ? absolute : null } catch { return null }
+}
+
 /**
  * Resolve a user-supplied file argument (absolute or workspace-relative) to an
  * absolute path strictly inside `root`, or `null` when it escapes the
@@ -37,6 +46,25 @@ export function resolveFileInRoot(root: string, file: string): string | null {
   const rel = path.relative(root, abs)
   if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null
   return abs
+}
+
+/** Reject symlink ancestors, special files and escapes before invoking tools/fixers. */
+export async function assertSafeFile(root: string, file: string): Promise<void> {
+  const abs = resolveFileInRoot(root, file)
+  if (!abs) throw new Error('file outside workspace')
+  root = path.resolve(root)
+  if (normalizeDrive(await realpath(root)) !== normalizeDrive(root)) throw new Error('symlink workspace excluded')
+  let current = root
+  for (const segment of path.relative(root, abs).split(path.sep)) {
+    current = path.join(current, segment)
+    try {
+      const info = await lstat(current)
+      if (info.isSymbolicLink() || (!info.isFile() && !info.isDirectory())) throw new Error('symlink or special file excluded')
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+      throw error
+    }
+  }
 }
 
 /**

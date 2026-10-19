@@ -4,6 +4,7 @@ import { clearAllBaselines, clearBaseline, ownerFromAgent, type BaselineOwner } 
 import { getConfig } from './config.js'
 import { clearQualityTurn, disposeQuality, verifyQuality } from './quality.js'
 import { findRepoRoot, resolveFileInRoot } from './workspace.js'
+import { evidenceRoots } from './evidence.js'
 
 interface SteerableAgent { id?: string; session?: object; steer(message: unknown): void }
 export interface TurnStoppingPayload { agent: SteerableAgent; turn: number; signal?: AbortSignal }
@@ -44,8 +45,9 @@ export async function handleTurnStopping(payload: TurnStoppingPayload): Promise<
     if (oldTurn !== undefined && oldTurn !== payload.turn) { steers.delete(`${payload.agent.id ?? 'session'}::${oldTurn}`); budgets.delete(identity) }
     turns.set(identity, payload.turn)
     const files = [...new Set([...dirty, ...(owned ?? [])])]
-    if (!files.length) return undefined
     const byRoot = new Map<string, string[]>()
+    for (const root of evidenceRoots(owner)) byRoot.set(root, [])
+    if (!files.length && !byRoot.size) return undefined
     for (const file of files) {
       const root = await findRepoRoot(path.dirname(file))
       const abs = root && resolveFileInRoot(root, file)
@@ -56,8 +58,8 @@ export async function handleTurnStopping(payload: TurnStoppingPayload): Promise<
     const config = getConfig()
     const used = budgets.get(identity) ?? 0
     const receipts = []
-    for (const [root, group] of byRoot) receipts.push(await verifyQuality(root, trackingOwner, { files: group, signal: payload.signal, continuationRounds: used, continuationLimit: config.gateMaxSteers }))
-    const regressions = receipts.flatMap((r) => r.newlyIntroducedRegressions)
+    for (const [root, group] of byRoot) receipts.push(await verifyQuality(root, evidenceRoots(owner).includes(root) ? owner : trackingOwner, { files: group, signal: payload.signal, continuationRounds: used, continuationLimit: config.gateMaxSteers }))
+    const regressions = receipts.flatMap((r) => [...r.newlyIntroducedRegressions, ...(trackingOwner === undefined ? r.unattributedFindings : [])])
     const key = `${payload.agent.id ?? 'session'}::${payload.turn}`
     const maySteer = config.gate && used < config.gateMaxSteers && !payload.signal?.aborted
     if (regressions.length && maySteer) {

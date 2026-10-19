@@ -31,7 +31,7 @@ import {
 } from './linters.js'
 import { parseFindingsFor } from './parse.js'
 import { isMissingBinary, runProcess, schedule, type RunOutcome } from './runner.js'
-import { normalizeDrive, toRelative } from './workspace.js'
+import { assertSafeFile, normalizeDrive, toRelative } from './workspace.js'
 
 /** Soft cap on tracked files per manager (memory guard). */
 const MAX_TRACKED_FILES = 512
@@ -138,6 +138,7 @@ export class LintManager {
    * fresh findings.
    */
   async lintFile(absPath: string, signal?: AbortSignal, onRun?: (run: LintExecution) => void): Promise<Finding[]> {
+    await assertSafeFile(this.root, absPath)
     const linter = await this.requireLinter(absPath)
     const spec = LINTER_SPECS[linter]
     const target = await resolveRunTarget(spec, absPath, this.root)
@@ -159,6 +160,7 @@ export class LintManager {
     for (const absPath of absPaths) {
       let linter: LinterKey
       try {
+        await assertSafeFile(this.root, absPath)
         linter = await this.requireLinter(absPath)
       } catch {
         continue
@@ -193,6 +195,7 @@ export class LintManager {
   async fixMany(absPaths: readonly string[], permittedFindings: readonly Finding[] = [], signal?: AbortSignal): Promise<BatchFixResult[]> {
     const groups = new Map<string, { linter: LinterKey; target: RunTarget; members: string[] }>()
     for (const absPath of absPaths) {
+      await assertSafeFile(this.root, absPath)
       const linter = await this.requireLinter(absPath)
       const spec = LINTER_SPECS[linter]
       const target = await resolveRunTarget(spec, absPath, this.root)
@@ -344,6 +347,7 @@ export class LintManager {
 
   /** Auto-fix one file, then re-lint. Throws the same friendly errors as lintFile. */
   async fixFile(absPath: string, permittedFindings?: readonly Finding[], signal?: AbortSignal): Promise<FixResult> {
+    await assertSafeFile(this.root, absPath)
     const linter = await this.requireLinter(absPath)
     const spec = LINTER_SPECS[linter]
     const target = await resolveRunTarget(spec, absPath, this.root)
