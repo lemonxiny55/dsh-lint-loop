@@ -66,10 +66,14 @@ For performance and complete local verification:
 
 ```sh
 node scripts/verify-candidate.mjs .cache/verification.json
-node scripts/benchmark-evidence.mjs /absolute/path/v060/dist/index.js dist/index.js
+node scripts/build-serial-benchmark.mjs
+node scripts/benchmark-evidence.mjs /absolute/path/v060/dist/index.js .cache/benchmark-serial/index.mjs dist/index.js
 ```
 
-The benchmark prints raw JSON after one warmup and five samples. Build the
+The serial builder replaces only the reader-pool limit in an isolated build,
+records both source digests, and leaves production source/configuration intact.
+The benchmark prints raw JSON after one warmup and five samples for each bundle
+and fixture size. Build the
 baseline from v0.6.0 in a separate checkout. Never reset or stash a user checkout
 to manufacture a baseline. See the [verification record](release-evidence/v0.7.0/verification.md)
 for which host installations and matrix jobs were actually executed.

@@ -1,0 +1,17 @@
+
+Checking for update
+Error: Error: net::ERR_CONNECTION_CLOSED
+    at SimpleURLLoaderWrapper.<anonymous> (node:electron/js2c/browser_init:1:139023)
+    at SimpleURLLoaderWrapper.emit (node:events:514:28)
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+dsh web: http://127.0.0.1:50366/?token=<redacted>
+{"demo":"passed","output":"D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\host-demo-desktop\\output","verdicts":["regression","regression","clean","clean"],"debt":3}
+[evidence-demo] actual pwsh success/failure/cancellation passed

@@ -1,0 +1,26 @@
+{
+  "host": "web",
+  "executable": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+  "args": [
+    "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\dsh021\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js",
+    "--profile",
+    "evidence-web",
+    "--patch",
+    "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\host-demo-web\\overlay.yml",
+    "--no-open",
+    "--port",
+    "0"
+  ],
+  "node": "v24.19.0",
+  "pid": 38840,
+  "installedCandidate": "0.7.0-rc.0",
+  "result": "passed",
+  "verdicts": [
+    "regression",
+    "regression",
+    "clean",
+    "clean"
+  ],
+  "capturedAt": "2026-10-19T12:10:14.507Z",
+  "shutdown": "agent handle disposed normally; app process tree stopped by acceptance supervisor"
+}

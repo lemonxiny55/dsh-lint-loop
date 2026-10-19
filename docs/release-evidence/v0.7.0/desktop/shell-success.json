@@ -1,0 +1,227 @@
+{
+  "outcome": "success",
+  "shell": "pwsh",
+  "isError": false,
+  "value": {
+    "cwd": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc",
+    "kind": "foreground",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "aborted": false,
+    "timeoutMs": 30000,
+    "stdout": {
+      "text": "",
+      "truncated": false
+    },
+    "stderr": {
+      "text": "",
+      "truncated": false
+    },
+    "sandbox": {
+      "mode": "workspace-write",
+      "denied": false,
+      "enforcement": "partial"
+    }
+  },
+  "receipt": {
+    "schemaVersion": 1,
+    "verifiedAt": "2026-10-19T12:10:55.251Z",
+    "evidenceCoverage": {
+      "digest": "d3405c491a7f175d06507cea985def8943747f4e56927e3f2208a4aa08b793d3",
+      "status": "incomplete",
+      "scope": "bounded-workspace-source-tree",
+      "exclusions": [
+        ".git",
+        "node_modules",
+        "dist",
+        "build",
+        "coverage",
+        ".cache",
+        ".next",
+        ".turbo"
+      ],
+      "reasons": [
+        "general execution has no confined filesystem mutation contract",
+        "observed changes have uncertain authorship"
+      ],
+      "changes": [
+        {
+          "file": "shell-success.js",
+          "after": "33206:d07b4e17a64f620f419706607c3f54e13199011630074b72252b1433a03ca384",
+          "operation": "added",
+          "tool": "pwsh",
+          "outcome": "success",
+          "attribution": "unattributed"
+        }
+      ],
+      "checkpoints": 3,
+      "bytesHashed": 1899,
+      "elapsedMs": 11
+    },
+    "mode": "balanced",
+    "root": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc",
+    "changedFiles": [
+      "shell-success.js"
+    ],
+    "newlyIntroducedRegressions": [],
+    "unattributedFindings": [],
+    "autoFixed": [],
+    "agentFixed": [],
+    "ignoredHistoricalDebt": [
+      {
+        "check": "typecheck:.",
+        "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+      },
+      {
+        "check": "tests:.",
+        "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      }
+    ],
+    "lint": "incomplete",
+    "typecheck": "clean",
+    "tests": "clean",
+    "selection": {
+      "strategy": "package-fallback",
+      "files": [
+        "tests/a.test.js",
+        "tests/b.test.js"
+      ],
+      "reasons": [
+        "no provable test dependency; running changed packages"
+      ],
+      "complete": true
+    },
+    "checksExecuted": [
+      {
+        "id": "lint:shell-success.js",
+        "kind": "lint",
+        "scope": "shell-success.js",
+        "command": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\.bin\\eslint.cmd",
+        "args": [
+          "--no-warn-ignored",
+          "-f",
+          "json",
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\shell-success.js"
+        ],
+        "status": "complete",
+        "issues": [],
+        "executed": [],
+        "elapsedMs": 260,
+        "invocations": [
+          {
+            "command": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\.bin\\eslint.cmd",
+            "args": [
+              "--no-warn-ignored",
+              "-f",
+              "json",
+              "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\shell-success.js"
+            ],
+            "cwd": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc"
+          }
+        ]
+      },
+      {
+        "id": "typecheck:.",
+        "kind": "typecheck",
+        "scope": ".",
+        "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+        "args": [
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\typescript\\bin\\tsc",
+          "--noEmit",
+          "--pretty",
+          "false",
+          "--incremental",
+          "false",
+          "-p",
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\tsconfig.json"
+        ],
+        "status": "complete",
+        "issues": [
+          "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+        ],
+        "executed": [],
+        "elapsedMs": 286,
+        "skipped": []
+      },
+      {
+        "id": "tests:.",
+        "kind": "tests",
+        "scope": ".",
+        "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+        "args": [
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\vitest\\vitest.mjs",
+          "run",
+          "--reporter=json"
+        ],
+        "status": "complete",
+        "issues": [
+          "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+        ],
+        "executed": [
+          "tests/a.test.js|a",
+          "tests/a.test.js|historical",
+          "tests/b.test.js|unrelated"
+        ],
+        "elapsedMs": 476,
+        "skipped": []
+      }
+    ],
+    "baselineChecks": [
+      {
+        "id": "typecheck:.",
+        "kind": "typecheck",
+        "scope": ".",
+        "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+        "args": [
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\typescript\\bin\\tsc",
+          "--noEmit",
+          "--pretty",
+          "false",
+          "--incremental",
+          "false",
+          "-p",
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\tsconfig.json"
+        ],
+        "status": "complete",
+        "issues": [
+          "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+        ],
+        "executed": [],
+        "elapsedMs": 274,
+        "skipped": []
+      },
+      {
+        "id": "tests:.",
+        "kind": "tests",
+        "scope": ".",
+        "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+        "args": [
+          "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\vitest\\vitest.mjs",
+          "run",
+          "--reporter=json"
+        ],
+        "status": "complete",
+        "issues": [
+          "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+        ],
+        "executed": [
+          "tests/a.test.js|a",
+          "tests/a.test.js|historical",
+          "tests/b.test.js|unrelated"
+        ],
+        "elapsedMs": 461,
+        "skipped": []
+      }
+    ],
+    "repairRounds": 0,
+    "continuationRounds": 0,
+    "elapsedMs": 1037,
+    "finalVerdict": "incomplete",
+    "reasons": [
+      "lint baseline unavailable: shell-success.js",
+      "general execution has no confined filesystem mutation contract",
+      "observed changes have uncertain authorship"
+    ]
+  }
+}

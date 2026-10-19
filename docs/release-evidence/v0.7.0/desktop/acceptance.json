@@ -1,0 +1,19 @@
+{
+  "host": "desktop",
+  "executable": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+  "args": [
+    "--user-data-dir=D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\host-demo-desktop\\electron-user-data"
+  ],
+  "node": "v24.21.0",
+  "pid": 38072,
+  "installedCandidate": "0.7.0-rc.0",
+  "result": "passed",
+  "verdicts": [
+    "regression",
+    "regression",
+    "clean",
+    "clean"
+  ],
+  "capturedAt": "2026-10-19T12:11:01.622Z",
+  "shutdown": "agent handle disposed normally; app process tree stopped by acceptance supervisor"
+}

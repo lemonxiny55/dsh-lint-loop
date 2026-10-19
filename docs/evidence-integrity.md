@@ -108,16 +108,19 @@ Actual Windows / Node 24.19.0 medians in milliseconds:
 
 | Source files | v0.6 first edit | v0.7 first edit | v0.6 repeat | v0.7 repeat |
 |---:|---:|---:|---:|---:|
-| 100 | 66.46 | 141.68 | 0.71 | 43.79 |
-| 1000 | 67.96 | 685.39 | 1.25 | 367.16 |
+| 100 | 66.90 | 134.67 | 0.83 | 42.80 |
+| 1000 | 69.28 | 678.34 | 0.96 | 398.64 |
 
-The initial serial implementation measured 1044.15 ms for a repeated 1000-file
-edit; the final four-reader implementation reduced that median to 367.16 ms (about 65%). The
-candidate still costs more than v0.6, which did not inventory those files. Raw
-[serial](release-evidence/v0.7.0/benchmark-serial-node24.json) and
-[optimized](release-evidence/v0.7.0/benchmark-node24.json) samples preserve
-variability and commands. These runs were sequential, not a controlled CPU-isolated
-experiment. Real full-check timings are in the lifecycle demo receipts.
+An isolated build of the same final source with only its reader-pool limit
+changed to one measured 968.42 ms for a repeated 1000-file edit. Four readers
+reduced that median to 398.64 ms (about 59%). Run
+`scripts/build-serial-benchmark.mjs` to reproduce that comparison without editing
+production source; its [build record](release-evidence/v0.7.0/benchmark-serial-build.json)
+contains both source digests. The candidate still costs more than v0.6, which did
+not inventory those files. [Final raw samples](release-evidence/v0.7.0/benchmark-node24.json)
+include all three bundles. [Earlier serial samples](release-evidence/v0.7.0/benchmark-serial-node24.json)
+remain historical iteration evidence. These runs were sequential, not a controlled
+CPU-isolated experiment. Real full-check timings are in the lifecycle demo receipts.
 
 Baseline check promises are shared once per session/root/turn, retaining the
 original pre-edit debt. Completion results are rerun: source-only hashing excludes

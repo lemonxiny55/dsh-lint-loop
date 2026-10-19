@@ -1,0 +1,53 @@
+{
+  "node": "v22.23.3",
+  "platform": "win32",
+  "startedAt": "2026-10-19T12:06:14.899Z",
+  "checks": [
+    {
+      "name": "typecheck",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\node22\\node.exe",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "--noEmit"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 1702,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "tests",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\node22\\node.exe",
+      "args": [
+        "node_modules/vitest/vitest.mjs",
+        "run"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 78294,
+      "stdout": "\n RUN  v4.1.11 D:/ChatGPTProjects/dsh-lint-loop\n\n\n Test Files  15 passed (15)\n      Tests  197 passed (197)\n   Start at  20:06:17\n   Duration  77.85s (transform 2.45s, setup 618ms, import 4.89s, tests 123.68s, environment 2ms)\n\n",
+      "stderr": ""
+    },
+    {
+      "name": "build",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\node22\\node.exe",
+      "args": [
+        "node_modules/tsup/dist/cli-default.js"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 521,
+      "stdout": "CLI Building entry: src/index.ts\nCLI Using tsconfig: tsconfig.json\nCLI tsup v8.5.1\nCLI Using tsup config: D:\\ChatGPTProjects\\dsh-lint-loop\\tsup.config.ts\nCLI Target: node22\nCLI Cleaning output folder\nESM Build start\nESM dist\\index.js     147.95 KB\nESM dist\\index.js.map 318.61 KB\nESM ⚡️ Build success in 35ms\n",
+      "stderr": ""
+    },
+    {
+      "name": "compat-smoke",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\node22\\node.exe",
+      "args": [
+        "scripts/compat-smoke.mjs"
+      ],
+      "exitCode": 0,
+      "elapsedMs": 115,
+      "stdout": "[dsh-lint-loop] plugin loaded\n[dsh-lint-loop] registered tool: quality_verify\n[dsh-lint-loop] registered tool: quality_receipt\n[dsh-lint-loop] registered tool: lint_status\n[dsh-lint-loop] registered tool: lint_repair\n[dsh-lint-loop] registered tool: lint_diagnostics\n[dsh-lint-loop] registered tool: lint_workspace_errors\n[dsh-lint-loop] registered tool: lint_fix\n[dsh-lint-loop] completion gate armed (agent/turn-stopping)\n[dsh-lint-loop] plugin unloaded\n[dsh-lint-loop] plugin loaded\n[dsh-lint-loop] registered tool: quality_verify\n[dsh-lint-loop] registered tool: quality_receipt\n[dsh-lint-loop] registered tool: lint_status\n[dsh-lint-loop] registered tool: lint_repair\n[dsh-lint-loop] registered tool: lint_diagnostics\n[dsh-lint-loop] registered tool: lint_workspace_errors\n[dsh-lint-loop] registered tool: lint_fix\n[dsh-lint-loop] completion gate armed (agent/turn-stopping)\n[dsh-lint-loop] plugin unloaded\nCompatibility smoke passed: dist/index.js; seven tools; native presenter; dispose/remount; v22.23.3\n",
+      "stderr": ""
+    }
+  ]
+}

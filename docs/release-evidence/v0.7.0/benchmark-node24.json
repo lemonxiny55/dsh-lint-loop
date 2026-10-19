@@ -6,112 +6,168 @@
     {
       "entry": ".cache/upstream/dist/index.js",
       "files": 100,
-      "firstEditMedianMs": 84.26639999999998,
-      "repeatEditMedianMs": 1.2099499999999352,
+      "firstEditMedianMs": 66.9031,
+      "repeatEditMedianMs": 0.828200000000038,
       "samples": [
         {
-          "firstEditMs": 530.3666,
-          "repeatEditMs": 1.7341500000001133
+          "firstEditMs": 66.576,
+          "repeatEditMs": 0.7590500000000304
         },
         {
-          "firstEditMs": 99.66750000000002,
-          "repeatEditMs": 1.2288500000000795
+          "firstEditMs": 66.9031,
+          "repeatEditMs": 0.9932999999999765
         },
         {
-          "firstEditMs": 84.26639999999998,
-          "repeatEditMs": 0.9166000000000167
+          "firstEditMs": 66.24340000000001,
+          "repeatEditMs": 1.2521500000000287
         },
         {
-          "firstEditMs": 76.73670000000016,
-          "repeatEditMs": 1.2099499999999352
+          "firstEditMs": 68.20339999999999,
+          "repeatEditMs": 0.828200000000038
         },
         {
-          "firstEditMs": 82.95630000000006,
-          "repeatEditMs": 1.148050000000012
+          "firstEditMs": 67.53740000000005,
+          "repeatEditMs": 0.6262500000000273
         }
       ]
     },
     {
       "entry": ".cache/upstream/dist/index.js",
       "files": 1000,
-      "firstEditMedianMs": 73.9353000000001,
-      "repeatEditMedianMs": 1.099250000000211,
+      "firstEditMedianMs": 69.27959999999985,
+      "repeatEditMedianMs": 0.9627499999996871,
       "samples": [
         {
-          "firstEditMs": 73.9353000000001,
-          "repeatEditMs": 1.1150499999998829
+          "firstEditMs": 70.02119999999991,
+          "repeatEditMs": 0.690050000000042
         },
         {
-          "firstEditMs": 70.94200000000001,
-          "repeatEditMs": 0.8989500000002408
+          "firstEditMs": 64.77049999999963,
+          "repeatEditMs": 1.159249999999929
         },
         {
-          "firstEditMs": 72.91800000000057,
-          "repeatEditMs": 1.0815999999999804
+          "firstEditMs": 69.27959999999985,
+          "repeatEditMs": 1.3089500000000953
         },
         {
-          "firstEditMs": 81.09870000000046,
-          "repeatEditMs": 1.3810000000003129
+          "firstEditMs": 70.0344,
+          "repeatEditMs": 0.9627499999996871
         },
         {
-          "firstEditMs": 77.34100000000035,
-          "repeatEditMs": 1.099250000000211
+          "firstEditMs": 65.26680000000033,
+          "repeatEditMs": 0.906999999999698
+        }
+      ]
+    },
+    {
+      "entry": ".cache/benchmark-serial/index.mjs",
+      "files": 100,
+      "firstEditMedianMs": 248.1325999999999,
+      "repeatEditMedianMs": 109.6581500000002,
+      "samples": [
+        {
+          "firstEditMs": 251.0010000000002,
+          "repeatEditMs": 106.89649999999938
+        },
+        {
+          "firstEditMs": 248.8093999999992,
+          "repeatEditMs": 104.33444999999983
+        },
+        {
+          "firstEditMs": 246.54960000000028,
+          "repeatEditMs": 127.95239999999967
+        },
+        {
+          "firstEditMs": 248.1325999999999,
+          "repeatEditMs": 109.6581500000002
+        },
+        {
+          "firstEditMs": 234.5599000000002,
+          "repeatEditMs": 116.57414999999992
+        }
+      ]
+    },
+    {
+      "entry": ".cache/benchmark-serial/index.mjs",
+      "files": 1000,
+      "firstEditMedianMs": 1598.7504000000008,
+      "repeatEditMedianMs": 968.4159,
+      "samples": [
+        {
+          "firstEditMs": 1761.3557,
+          "repeatEditMs": 1001.134
+        },
+        {
+          "firstEditMs": 1610.988300000001,
+          "repeatEditMs": 968.4159
+        },
+        {
+          "firstEditMs": 1598.7504000000008,
+          "repeatEditMs": 972.5159500000009
+        },
+        {
+          "firstEditMs": 1598.3797999999988,
+          "repeatEditMs": 937.4579000000012
+        },
+        {
+          "firstEditMs": 1564.374899999999,
+          "repeatEditMs": 938.3420499999993
         }
       ]
     },
     {
       "entry": "dist/index.js",
       "files": 100,
-      "firstEditMedianMs": 105.43209999999999,
-      "repeatEditMedianMs": 37.11414999999988,
+      "firstEditMedianMs": 134.66739999999845,
+      "repeatEditMedianMs": 42.796949999999924,
       "samples": [
         {
-          "firstEditMs": 103.23599999999988,
-          "repeatEditMs": 37.11414999999988
+          "firstEditMs": 134.86649999999645,
+          "repeatEditMs": 44.06529999999839
         },
         {
-          "firstEditMs": 104.92409999999927,
-          "repeatEditMs": 33.99290000000019
+          "firstEditMs": 133.15529999999853,
+          "repeatEditMs": 42.796949999999924
         },
         {
-          "firstEditMs": 119.07249999999931,
-          "repeatEditMs": 43.043600000000424
+          "firstEditMs": 135.943299999999,
+          "repeatEditMs": 42.72344999999768
         },
         {
-          "firstEditMs": 105.43209999999999,
-          "repeatEditMs": 36.48080000000027
+          "firstEditMs": 134.66739999999845,
+          "repeatEditMs": 42.7867499999993
         },
         {
-          "firstEditMs": 106.12700000000041,
-          "repeatEditMs": 37.312900000000354
+          "firstEditMs": 132.0132999999987,
+          "repeatEditMs": 45.45780000000377
         }
       ]
     },
     {
       "entry": "dist/index.js",
       "files": 1000,
-      "firstEditMedianMs": 408.5491000000002,
-      "repeatEditMedianMs": 309.8012499999977,
+      "firstEditMedianMs": 678.344299999997,
+      "repeatEditMedianMs": 398.6443500000023,
       "samples": [
         {
-          "firstEditMs": 431.9142000000011,
-          "repeatEditMs": 335.9267
+          "firstEditMs": 678.344299999997,
+          "repeatEditMs": 398.9969999999994
         },
         {
-          "firstEditMs": 408.5491000000002,
-          "repeatEditMs": 282.99734999999964
+          "firstEditMs": 688.4017000000022,
+          "repeatEditMs": 393.80585000000065
         },
         {
-          "firstEditMs": 386.768399999999,
-          "repeatEditMs": 334.27135
+          "firstEditMs": 679.0494000000035,
+          "repeatEditMs": 402.302300000003
         },
         {
-          "firstEditMs": 393.3230000000003,
-          "repeatEditMs": 309.34659999999985
+          "firstEditMs": 661.4199000000008,
+          "repeatEditMs": 398.6443500000023
         },
         {
-          "firstEditMs": 421.2451000000001,
-          "repeatEditMs": 309.8012499999977
+          "firstEditMs": 669.9133999999976,
+          "repeatEditMs": 393.45814999999857
         }
       ]
     }
