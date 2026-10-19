@@ -138,7 +138,7 @@ export async function snapshotWorkspace(root: string, signal?: AbortSignal): Pro
           if (entry.isSymbolicLink()) { fail(`symlink excluded: ${toRelative(abs, root)}`); continue }
           if (entry.isDirectory()) { dirs.push(abs); continue }
           pending.push(inspectFile(abs))
-          if (pending.length === 4) { await Promise.all(pending); pending = [] }
+          if (pending.length === 8) { await Promise.all(pending); pending = [] }
         }
       } catch (error) { fail(`unreadable directory: ${toRelative(dir, root)}: ${(error as Error).message}`) }
     }
@@ -264,3 +264,4 @@ export function clearEvidence(owner?: BaselineOwner): void {
   states.delete(owner ?? GLOBAL)
 }
 export function disposeEvidence(): void { for (const key of states.keys()) clearEvidence(key) }
+
