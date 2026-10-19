@@ -52,7 +52,8 @@ export async function assertSafeFile(root: string, file: string): Promise<void> 
   const abs = resolveFileInRoot(root, file)
   if (!abs) throw new Error('file outside workspace')
   root = path.resolve(root)
-  if (normalizeDrive(await realpath(root)) !== normalizeDrive(root)) throw new Error('symlink workspace excluded')
+  if ((await lstat(root)).isSymbolicLink()) throw new Error('symlink workspace excluded')
+  await realpath(root) // validate the explicit anchor; short-name/case aliases are not symlinks
   let current = root
   for (const segment of path.relative(root, abs).split(path.sep)) {
     current = path.join(current, segment)

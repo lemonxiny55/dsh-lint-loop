@@ -120,7 +120,9 @@ export async function snapshotWorkspace(root: string, signal?: AbortSignal): Pro
     } catch (error) { fail(`unreadable or unstable path: ${file}: ${(error as Error).message}`) }
   }
   try {
-    if (normalizeDrive(await realpath(root)) !== normalizeDrive(root)) throw new Error('workspace root is a symlink or non-canonical path')
+    if ((await lstat(root)).isSymbolicLink()) throw new Error('workspace root is a symlink')
+    // Windows TEMP can use an 8.3 alias; anchor the explicit root to its physical spelling.
+    root = normalizeDrive(await realpath(root))
     const dirs = [root]
     while (dirs.length) {
       if (expired()) { fail('checkpoint cancelled or timed out'); break }

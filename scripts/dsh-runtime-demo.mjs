@@ -1,16 +1,16 @@
 // Reproducible actual DSH AgentLoop + fs tools + ESLint/TS/Vitest demo.
 // Model input is deterministic; no verification results or lifecycle events are fabricated.
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, symlink, readFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, symlink, readFile, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { pathToFileURL, fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 
 export async function runDemo(ctx, { runtime, dependencies, output, bundle, mount = true, evidenceRequired = true }) {
   const load = (name) => import(pathToFileURL(path.join(runtime, 'node_modules', '@deepseek-ai', name, 'lib/index.js')).href)
   const llm = await load('dsh-llm')
-  const root = await mkdtemp(path.join(tmpdir(), 'dsh-evidence-demo-'))
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'dsh-evidence-demo-')))
   await mkdir(path.join(root, 'src')); await mkdir(path.join(root, 'tests'))
   await symlink(path.join(dependencies, 'node_modules'), path.join(root, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
   const files = {
@@ -108,7 +108,7 @@ export async function runDemo(ctx, { runtime, dependencies, output, bundle, moun
   } finally { offResult(); registration(); await handle.dispose() }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/(.:)/, '$1'))) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const runtime = path.resolve(process.argv[2] ?? '.cache/dsh021')
   const { Context } = await import(pathToFileURL(path.join(runtime, 'node_modules/@deepseek-ai/cordis/lib/index.js')).href)
   const ctx = new Context()

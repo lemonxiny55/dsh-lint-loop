@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { chmod, mkdir, readFile, rename, rm, symlink } from 'node:fs/promises'
+import { access, chmod, mkdir, readFile, rename, rm, symlink } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { apply } from '../src/index.js'
@@ -52,6 +52,10 @@ describe('bounded read-only evidence', () => {
   it.each([true, false])('preserves pre-existing dirty bytes with git=%s and proves direct edits', async (git) => {
     const f = await fixture(git)
     const old = await f.repo.write('dirty.txt', 'pre-existing unsaved work')
+    const alias = process.platform === 'win32' ? f.repo.root.toUpperCase() : path.join(f.repo.root, '.')
+    const physical = await snapshotWorkspace(f.repo.root), aliased = await snapshotWorkspace(alias)
+    expect(aliased.complete).toBe(true)
+    expect(snapshotDigest(aliased)).toBe(snapshotDigest(physical))
     await edit(f)
     const receipt = await verifyQuality(f.repo.root, f.owner)
     expect(receipt.finalVerdict).toBe('clean')
@@ -295,11 +299,16 @@ describe('real shell execution windows', () => {
       ? `Set-Content -LiteralPath './created.ts' -Value 'export const created = 1'; ${outcome === 'cancelled' ? 'Start-Sleep -Seconds 20' : outcome === 'failure' ? 'exit 7' : 'exit 0'}`
       : `printf 'export const created = 1' > created.ts; ${outcome === 'cancelled' ? 'sleep 20' : outcome === 'failure' ? 'exit 7' : 'exit 0'}`
     const execution = { ...f.actor, name: tool, arguments: { command: script }, signal: controller.signal }
+    let poll: ReturnType<typeof setInterval> | undefined, fallback: ReturnType<typeof setTimeout> | undefined
     try {
       await mounted.execute(execution, async () => {
-        if (outcome === 'cancelled') setTimeout(() => controller.abort(), 700)
+        if (outcome === 'cancelled') {
+          poll = setInterval(() => { void access(path.join(f.repo.root, 'created.ts')).then(() => controller.abort()).catch(() => {}) }, 50)
+          fallback = setTimeout(() => controller.abort(), 10000)
+        }
         const args = flag === '-NoProfile' ? [flag, '-Command', script] : [flag, script]
-        const result = await runProcess(binary, args, { cwd: f.repo.root, timeoutMs: 5000, signal: controller.signal })
+        const result = await runProcess(binary, args, { cwd: f.repo.root, timeoutMs: 15000, signal: controller.signal })
+        clearInterval(poll); clearTimeout(fallback)
         expect(result.spawnError).toBeUndefined()
         if (outcome === 'cancelled') expect(result.cancelled).toBe(true)
         else expect(result.exitCode).toBe(outcome === 'failure' ? 7 : 0)
@@ -310,7 +319,7 @@ describe('real shell execution windows', () => {
       expect(receipt.changedFiles).toContain('created.ts')
       expect(receipt.evidenceCoverage.changes).toContainEqual(expect.objectContaining({ file: 'created.ts', attribution: 'unattributed', outcome }))
       expect(turnEditedFiles(f.owner)).toEqual([])
-    } finally { mounted.dispose() }
+    } finally { clearInterval(poll); clearTimeout(fallback); mounted.dispose() }
   })
   it('tracks a throwing custom script and background promotion conservatively', async () => {
     const f = await fixture(), mounted = mount()
