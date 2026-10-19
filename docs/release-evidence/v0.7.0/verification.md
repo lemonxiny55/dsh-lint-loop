@@ -4,9 +4,9 @@ Candidate: `0.7.0-rc.0`. Date: 2026-10-19.
 Status: **RELEASE CANDIDATE READY** for the documented bounded source scope.
 No npm publication, GitHub Release or merge has been performed or authorized.
 
-Runtime/test source revision: `7db62ca6c1454ac1938044ef4d22df7dcdd72b67`.
-Later commits add evidence, documentation and the isolated serial benchmark builder;
-they do not change the installed runtime bundle. The PR remains a reviewable draft.
+Optimized runtime source revision: `8ab76d3c00c97ef6501fcd4c5e2725d74a60e219`.
+The optimization changes the bounded checkpoint reader count from four to eight.
+The PR remains a reviewable draft.
 
 ## Review and compatibility
 
@@ -26,15 +26,18 @@ they do not change the installed runtime bundle. The PR remains a reviewable dra
 
 | Environment | Actual result |
 |---|---|
-| Local Windows / Node 22.23.3 | typecheck, **197/197 tests**, build, smoke passed |
-| Local Windows / Node 24.19.0 | typecheck, **197/197 tests**, build, smoke passed |
-| GitHub Linux × Node 22/24 | all CI steps passed, including 197 tests, exact published DSH API and real AgentLoop demo |
-| GitHub Windows × Node 22/24 | all CI steps passed, including 197 tests, exact published DSH API and real AgentLoop demo |
-| Actual DSH Web / Windows / Node 24.19.0 | final tgz installed through profile CLI; app startup, real tools and native pwsh scenarios passed |
-| Official DSH Desktop rc.2 / Windows / embedded Node 24.21.0 | final tgz installed using bundled CLI; actual app, real tools and native pwsh scenarios passed |
+| Local Windows / Node 22.23.3 | **197/197 tests** passed; standalone local typecheck was blocked by mismatched DSH/Cordis declarations in the clone |
+| Local Windows / Node 24.19.0 | **197/197 tests**, build and compatibility smoke passed; standalone local typecheck was blocked by mismatched DSH/Cordis declarations in the clone |
+| GitHub Linux × Node 22/24 | optimized source CI passed (2/2 jobs) |
+| GitHub Windows × Node 22/24 | optimized source CI passed (2/2 jobs) |
+| Actual DSH Web / Windows / Node 24.19.0 | historical four-reader bundle acceptance; optimized package not installed in the app |
+| Official DSH Desktop rc.2 / Windows / embedded Node 24.21.0 | historical four-reader bundle acceptance; optimized package not installed in the app |
 
-[Runtime-source CI](https://github.com/lemonxiny55/dsh-lint-loop/actions/runs/39249462133)
-and [captured job/step results](ci.json). Local actual command outputs are in
+The earlier runtime-source CI run [39249462133](https://github.com/lemonxiny55/dsh-lint-loop/actions/runs/39249462133)
+and prior [captured job/step results](ci.json) apply to the pre-optimization head.
+The optimized runtime commit passed all four matrix jobs in [run 39259992219](https://github.com/lemonxiny55/dsh-lint-loop/actions/runs/39259992219),
+with typecheck, tests, build, compatibility smoke, exact published DSH API and real AgentLoop demo in each job; captured details are in [ci-optimization.json](ci-optimization.json).
+Local actual command outputs are in
 [Node 22](node22.json) and [Node 24](node24.json). No tests are disabled or skipped
 to satisfy the gate. The final evidence commit also runs the full PR CI.
 
@@ -73,19 +76,53 @@ AgentLoop/check processes were exercised by CI, not a Linux GUI session.
 ## Identity, performance and limits
 
 [Provenance](provenance.json) records 64 normalized source/config/test/script
-identities, the additional benchmark builder, official installer identity, tgz
-SHA256 and matching production/installed bundle hashes for both hosts. The bundle
-SHA256 is `1554b0cab8e729bbdb2c099538c159253fcd725e984da725721b1666c1adc4e1`.
+identities, benchmark scripts, official installer identity, tgz SHA256 and the
+optimized bundle SHA256 `96d57d4c3f4cb053c41aac9fd7d9f657cbaf27466922792a38e18142ec837d5e`.
+Web/Desktop acceptance hashes below refer to the prior four-reader bundle
+(`1554b0cab8e729bbdb2c099538c159253fcd725e984da725721b1666c1adc4e1`).
 The [package manifest](package-manifest.json) contains npm's actual pack integrity
 and file list. These are inspectable records, not signed attestations.
 
 The [reproduction guide](../../evidence-demo.md) builds and runs the experiments.
-Final Windows/Node 24 repeated 1000-file edit medians: v0.6 **0.96ms**, final
-single-reader comparison **968.42ms**, final four-reader candidate **398.64ms**.
-Four readers reduce same-source serial cost by about **59%**. The candidate is
-still slower than v0.6 because it inventories source content; no overall speedup
-over v0.6 is claimed. [Raw samples](benchmark-node24.json) retain all variability.
-Baseline promises are shared once per turn; full completion checks are rerun.
+The original 1000-file comparison measured 0.96ms for v0.6 (which did not inventory
+file contents), 968.42ms for a one-reader v0.7 variant, and 398.64ms for the
+four-reader v0.7 candidate. These are not equivalent feature scopes. The file
+inventory must remain complete to detect writes outside the reported tool target,
+shell side effects, additions, deletions, renames and concurrent writers. Per-file
+identity checks, no-follow opens, stable reads and SHA-256 hashing account for most
+of the checkpoint cost. Each checkpoint rehashes the bounded source tree. Metadata-
+only cache keys can miss writes, and a watcher cannot reliably establish coverage
+for all shell writers. Readers share one reserved byte budget. With `--expose-gc`
+and 5ms sampling, 1000-file heap peak median/P95 was 53.54/54.16MB at four readers
+and 53.99/54.41MB at eight; shell-batch medians were 53.36MB and 53.38MB. RSS delta
+is noisier due to allocator retention and is an observed run value, not an allocation
+guarantee.
+
+The evidence comparison and final workspace digest were not performance
+bottlenecks. Their implementation was left unchanged. The same-source comparison
+increased the fixed reader bound from four to eight. Eight readers improved
+1000-file repeated-edit median/P95 from **394.46/400.12ms** to **311.22/315.77ms**;
+the shell batch with add/delete/rename improved from **411.39/420.51ms** to
+**325.89/348.06ms**. Receipt semantics matched. The candidate remains slower than
+v0.6 because it proves substantially more; no overall speedup over v0.6 is claimed.
+The 16-reader experiment was faster, but its 1000-file shell batch heap peak was
+about **26.6MB** versus **13.3MB** at eight readers, for about 14% additional speed.
+We retained eight as the measured performance/memory balance. The reader bound
+remains finite and uses the existing byte, file and time budgets.
+
+[Optimized comparison](benchmark-optimization-node24.json) records Windows/Node 24,
+one warmup and 20 measured samples, three edits per fixture, a 5ms memory sampler,
+and a complete Quality Receipt check after each sample. Receipt fields match after
+normalizing workspace paths, timestamps and elapsed durations. It covers 100- and
+1000-file fixtures for continuous single-file edits and shell batch edits that
+modify ten files, add one, delete one and rename one (reported as delete+add).
+Batch receipts remained `incomplete` with changes marked `unattributed`, as
+required for a general shell execution. The [eight-versus-sixteen reader exploration](benchmark-reader-limit-exploration-node24.json)
+records the memory trade-off. Memory is peak heap/RSS delta sampled after forced GC;
+RSS P95 varies with allocator retention and is an observed run result, not a
+per-check allocation guarantee. The earlier [raw comparison](benchmark-node24.json)
+retains the original five-sample results. Baseline promises are shared once per turn;
+full completion checks are rerun.
 
 The existing workspace `.git` link points to a missing old checkout and was
 preserved. Separate clones and authenticated GitHub commits were used. Tracking

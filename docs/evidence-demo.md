@@ -66,14 +66,17 @@ For performance and complete local verification:
 
 ```sh
 node scripts/verify-candidate.mjs .cache/verification.json
-node scripts/build-serial-benchmark.mjs
-node scripts/benchmark-evidence.mjs /absolute/path/v060/dist/index.js .cache/benchmark-serial/index.mjs dist/index.js
+node scripts/build-serial-benchmark.mjs 4
+node --expose-gc scripts/benchmark-evidence.mjs .cache/benchmark-readers/4/index.mjs dist/index.js
 ```
 
-The serial builder replaces only the reader-pool limit in an isolated build,
-records both source digests, and leaves production source/configuration intact.
-The benchmark prints raw JSON after one warmup and five samples for each bundle
-and fixture size. Build the
-baseline from v0.6.0 in a separate checkout. Never reset or stash a user checkout
-to manufacture a baseline. See the [verification record](release-evidence/v0.7.0/verification.md)
-for which host installations and matrix jobs were actually executed.
+The reader-pool builder replaces only the limit in an isolated build, records both
+source digests, and leaves production source/configuration intact. The benchmark
+runs continuous edits and an `exec`-callback batch covering file add/delete/rename
+on 100- and 1000-file fixtures. It verifies complete coverage where expected and
+compares normalized Quality Receipt semantics between bundles. The default is one
+warmup plus 20 samples; set `DSH_BENCH_SAMPLES` only for short exploratory runs.
+The shell batch callback writes fixture files directly, so its timing excludes
+process startup; separate runtime tests cover real shell/bash/pwsh. See the
+[verification record](release-evidence/v0.7.0/verification.md) for host installations
+and CI runs.

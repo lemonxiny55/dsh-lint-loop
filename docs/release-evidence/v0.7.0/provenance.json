@@ -1,5 +1,5 @@
 {
-  "codeCommit": "7db62ca6c1454ac1938044ef4d22df7dcdd72b67",
+  "codeCommit": "8ab76d3c00c97ef6501fcd4c5e2725d74a60e219",
   "sourceLineEndings": "normalized LF",
   "sourceFiles": {
     ".github/ISSUE_TEMPLATE/bug_report.yml": "dc5e2623a4b341c3fa1bf1f99c7ec8bddd951b3317c0e2bc9f8d6a0b60eba54c",
@@ -11,7 +11,7 @@
     "package.json": "044c12b82a59694b7007dcfa9e238756102161b81151f07f2a6ee931d1906993",
     "pnpm-lock.yaml": "c36316f226c56250355e1d402aab2e92198286164c72934b483afd42f78b5c0c",
     "scripts/apply-repository-metadata.ps1": "261d20ece17ca16ebaf5d4f6f229bd3f1c71c89d90dcb27e0abad892b7d71548",
-    "scripts/benchmark-evidence.mjs": "f178a6db15ea19ca26568da69f111234273c9f6c7b200efec183c23f931f6fcf",
+    "scripts/benchmark-evidence.mjs": "e5a6ca8332bbcb010eb93a0ce77570ae32151ca4a30e5563bf7b2954791ca777",
     "scripts/check-dsh-api.mjs": "deae54eece61f0ac5d44ae1bcb8dbe9b09bd44d651af208f2203a785c3c83d13",
     "scripts/compat-smoke.mjs": "a00c81ec906ca7a18b1cd6b98420fee66fe2c1311dfe98553f447f750956264b",
     "scripts/dsh-runtime-demo.mjs": "20f45839abd45cc477113c70c6401faad3541b64e6f4bb6a112394cefddf26ae",
@@ -25,7 +25,7 @@
     "src/config.ts": "92c2693ecef0a4287df2d7f0a27ec4b7ec5b1d75795a19fee3e1fa5ff3dd31eb",
     "src/detect.ts": "ca222a86a8c9774795254c34062872500affa1e572af2b4bd1d7a6dfda02e2d6",
     "src/errors.ts": "de632a6c66b74b9546c7cdbf6b87a1be53441a533a1ab9ff6109f11f024f3da0",
-    "src/evidence.ts": "fbc6a33a402d6ac0a090527479d7068f3a67c7e0a604843bd0b0ebf6c4a89ac9",
+    "src/evidence.ts": "b831f835a492f8fb940a6ff460158489b1dcf4e2b7671a8ad7399202f0ec1c65",
     "src/findings.ts": "edd35e50dda59ff91afa8ccf86f0d7332090fa1a37abb40b5cd02361e7569bca",
     "src/frames.ts": "15e1dc9829b17f8ce1385ef82881667d5a90a7fe70a47650c41c42c99a457c78",
     "src/gate.ts": "b86cefefa716607d5711d4e3075903c25f6cc0c542b078e2626b64a4d5ff6aeb",
@@ -68,10 +68,11 @@
     "vitest.config.ts": "463eea25173484ffc995ff33725038f3ea545ae614d07ff255bda37e5b3a89bf"
   },
   "experimentFiles": {
-    "scripts/build-serial-benchmark.mjs": "3bc8aee3e490c243b0c41d3dd753608ed2c1b3e2405d17daa9c88e8d9acedd34"
+    "scripts/build-serial-benchmark.mjs": "7df335a40702526a43568e95415f7fec14ed5977be4002ea39a81b0923b89b2b",
+    "scripts/benchmark-evidence.mjs": "e5a6ca8332bbcb010eb93a0ce77570ae32151ca4a30e5563bf7b2954791ca777"
   },
-  "bundleSha256": "1554b0cab8e729bbdb2c099538c159253fcd725e984da725721b1666c1adc4e1",
-  "packageSha256": "13397e5c0f1aa77798522aba60c493d339b41ff0b0f567051809a513ba488397",
+  "bundleSha256": "96d57d4c3f4cb053c41aac9fd7d9f657cbaf27466922792a38e18142ec837d5e",
+  "packageSha256": "acdc28228ca6af5797e4dff4ed73a2e5cd76b4479712627d4632664730e03ae9",
   "officialDesktopInstallerSha512": "39POl5osl9PKMqrPXQA52dh/bCV0Z02vOV9cTjOJDHE6gsJwp5bv7lfgB3mVWAKspX7a/w1iTi+8Listdhq45g==",
   "hosts": {
     "web": {
@@ -83,6 +84,11 @@
       "acceptanceCapturedAt": "2026-10-19T12:11:01.622Z"
     }
   },
-  "capturedAt": "2026-10-19T12:19:54.404Z",
-  "note": "Source/artifact identity, not a signed attestation. Full application stopped by supervisor after normal Agent disposal. Later evidence/documentation changes do not change the validated runtime bundle."
+  "capturedAt": "2026-10-19T13:26:36.114Z",
+  "note": "Web/Desktop acceptance records below refer to the original four-reader bundle. The optimized eight-reader package was built and packed locally, not published or installed to those applications; the updated PR CI verifies the optimized source across its platform/runtime matrix.",
+  "evidenceFiles": {
+    "docs/release-evidence/v0.7.0/benchmark-optimization-node24.json": "4f8a0c76d1cdae5604b0d6a05d4cdbae71c97fd3c045be2da53c69b99c8f84c4",
+    "docs/release-evidence/v0.7.0/benchmark-reader-limit-exploration-node24.json": "d87d5be5a9feded2fcbd08335e72c048b4f8d944f08d7d37fd28b99778fb03d1",
+    "docs/release-evidence/v0.7.0/package-manifest.json": "ae14d90fe2090cc52128292252454aca41c91b7db29a3ef9d7f9ea03ce0678ca"
+  }
 }

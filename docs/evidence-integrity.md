@@ -77,7 +77,7 @@ Existing configuration remains valid. Additive settings:
 | `trackingMaxFileBytes` | 2097152 | Maximum individual file size |
 | existing `qualityMaxFiles` | 2000 | Discovery entries and retained change events |
 
-Four readers share the reservation budget; file descriptors close in `finally`.
+Eight readers share the reservation budget; file descriptors close in `finally`.
 Each buffer has one extra growth-detection byte. An exceeded budget, unstable
 file, unreadable directory, permission denial, special file or symlink makes
 coverage incomplete. Symlinks are not traversed. Root and ancestor paths are
@@ -100,26 +100,30 @@ exhaustion remain explicit. The receipt tool runs source scans, not lint or test
 ## Performance
 
 `scripts/benchmark-evidence.mjs` uses the same machine, runtime and fixture for
-both bundles, one warmup plus five measured samples, and three direct edits per
-sample. It executes a protocol linter subprocess and sets `completionChecks=false`
-to isolate change tracking. It is not an application-throughput benchmark.
+both bundles, one warmup plus 20 measured samples, and three direct edits per
+sample. It validates complete receipts and semantic equality, samples memory, and
+sets `completionChecks=false` to isolate change tracking. A second scenario applies
+deterministic shell-like filesystem changes through an `exec` event callback; it
+does not include shell-process startup. This is not an application-throughput
+benchmark.
 
 Actual Windows / Node 24.19.0 medians in milliseconds:
 
-| Source files | v0.6 first edit | v0.7 first edit | v0.6 repeat | v0.7 repeat |
+| Source files | v0.6 first edit | v0.7 first edit | v0.6 repeat | v0.7 four-reader repeat |
 |---:|---:|---:|---:|---:|
 | 100 | 66.90 | 134.67 | 0.83 | 42.80 |
 | 1000 | 69.28 | 678.34 | 0.96 | 398.64 |
 
-An isolated build of the same final source with only its reader-pool limit
-changed to one measured 968.42 ms for a repeated 1000-file edit. Four readers
-reduced that median to 398.64 ms (about 59%). Run
-`scripts/build-serial-benchmark.mjs` to reproduce that comparison without editing
-production source; its [build record](release-evidence/v0.7.0/benchmark-serial-build.json)
-contains both source digests. The candidate still costs more than v0.6, which did
-not inventory those files. [Final raw samples](release-evidence/v0.7.0/benchmark-node24.json)
-include all three bundles. [Earlier serial samples](release-evidence/v0.7.0/benchmark-serial-node24.json)
-remain historical iteration evidence. These runs were sequential, not a controlled
+The original one-reader comparison measured 968.42ms versus 398.64ms at four
+readers for a repeated 1000-file edit. The updated [optimized comparison](release-evidence/v0.7.0/benchmark-optimization-node24.json)
+measures four versus eight readers: **394.46ms → 311.22ms** median and
+**400.12ms → 315.77ms** P95. The shell batch/add/delete/rename scenario measured
+**411.39ms → 325.89ms** median. Receipt semantics matched. Sixteen readers were
+tested but not selected; their [exploration](release-evidence/v0.7.0/benchmark-reader-limit-exploration-node24.json)
+shows roughly twice the observed shell-batch heap peak versus eight. These candidate
+checks remain slower than v0.6 because v0.6 did not inventory file content.
+[Original raw samples](release-evidence/v0.7.0/benchmark-node24.json) retain the
+one- and four-reader results. These runs were sequential, not a controlled
 CPU-isolated experiment. Real full-check timings are in the lifecycle demo receipts.
 
 Baseline check promises are shared once per session/root/turn, retaining the

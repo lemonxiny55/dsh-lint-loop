@@ -3,10 +3,10 @@
     "id": "dsh-lint-loop@0.7.0-rc.0",
     "name": "dsh-lint-loop",
     "version": "0.7.0-rc.0",
-    "size": 128847,
-    "unpackedSize": 505421,
-    "shasum": "b56a32a4a507fed8ca916ae79d1549747bd615ee",
-    "integrity": "sha512-IPQMiPLJZye0gQHrhEgxAU42IMinxP+QyWKQiWDCUOVA7Ct71eSkS745lFvGKm2yVD2aIQJLU7sEHR8iOt8dxQ==",
+    "size": 128768,
+    "unpackedSize": 505953,
+    "shasum": "347933a9e95120fddbd6ea136fdb781c7f5d8e61",
+    "integrity": "sha512-0RCoPzoHqhmTFiAT+E+Cxx5vUEThvUjLv3Iy0WOT7dzt5YLBo4f1bVgSRE4ObhFg+vxj5TmNAw6UbRGf5Xbing==",
     "filename": "dsh-lint-loop-0.7.0-rc.0.tgz",
     "files": [
       {
@@ -36,7 +36,7 @@
       },
       {
         "path": "dist/index.js.map",
-        "size": 326453,
+        "size": 326985,
         "mode": 420
       },
       {
