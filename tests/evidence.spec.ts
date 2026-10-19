@@ -171,13 +171,23 @@ describe('bounded read-only evidence', () => {
     const f = await fixture()
     if (budget === 'entries') applyConfig({ qualityMaxFiles: 1 })
     if (budget === 'bytes') applyConfig({ trackingMaxBytes: 1 })
-    if (budget === 'file-bytes') applyConfig({ trackingMaxFileBytes: 1 })
+    if (budget === 'file-bytes') {
+      applyConfig({ trackingMaxFileBytes: 1 })
+      for (let i = 0; i < 110; i++) await f.repo.write(`blocked-${i}.txt`, 'over budget')
+    }
     const controller = new AbortController()
     if (budget === 'cancel') controller.abort()
     const snapshot = await snapshotWorkspace(f.repo.root, controller.signal)
     expect(snapshot.complete).toBe(false)
     expect(snapshot.reasons.length).toBeGreaterThan(0)
     expect(snapshot.bytes).toBeLessThanOrEqual(budget === 'bytes' ? 1 : 32 * 1024 * 1024)
+    if (budget === 'file-bytes') {
+      const checkpoint = await beginCheckpoint(f.repo.root, f.owner, 'read')
+      await endCheckpoint(checkpoint, 'success')
+      const coverage = await auditCoverage(f.repo.root, f.owner)
+      expect(coverage.reasons.length).toBeLessThanOrEqual(100)
+      expect(coverage.reasons).toContain('reason budget exceeded')
+    }
   })
   it('marks overlapping executions uncertain and isolates sessions/workspaces', async () => {
     const f = await fixture(), other = await fixture()

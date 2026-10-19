@@ -160,6 +160,7 @@ export function snapshotChanges(before: Snapshot, after: Snapshot): Array<Pick<C
 function account(state: State, snapshot: Snapshot): void {
   state.checkpoints++; state.bytes += snapshot.bytes; state.elapsedMs += snapshot.elapsedMs
   for (const reason of snapshot.reasons) state.reasons.add(reason)
+  if (state.reasons.size > 100) state.reasons = new Set([...state.reasons].slice(0, 99).concat('reason budget exceeded'))
 }
 function append(state: State, changes: ChangeEvidence[]): void {
   const limit = getConfig().qualityMaxFiles
