@@ -19,8 +19,12 @@ interface DisplayTarget {
   displayPath?: string
 }
 
-function actorCwd(actor: unknown): string | undefined {
+const executionDirectories = new WeakMap()
+export function bindActorCwd(actor: object, cwd: string): void { executionDirectories.set(actor, cwd) }
+export function actorCwd(actor: unknown): string | undefined {
   if (!actor || typeof actor !== 'object') return undefined
+  const bound = executionDirectories.get(actor) as string | undefined
+  if (bound) return bound
   const candidate = actor as {
     header?: { cwd?: string }
     session?: { header?: { cwd?: string } }

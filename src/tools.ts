@@ -30,6 +30,7 @@ import { findRepoRoot, resolveFileInRoot } from './workspace.js'
 import { repairStatus, repairTurn } from './repair.js'
 import { qualityReceipt, verifyQuality, recordQualityRepair } from './quality.js'
 import { qualityCallView, qualityResultView } from './quality-view.js'
+import { actorCwd } from './regression.js'
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 
@@ -117,7 +118,7 @@ function friendlyMessage(error: unknown): string {
 
 /** Resolve the workspace root for a tool call (explicit arg → session cwd → process cwd). */
 async function resolveRoot(arg: string | undefined, exec: ToolRunExec): Promise<string> {
-  const cwd = exec.agent?.session?.header?.cwd
+  const cwd = actorCwd(exec)
   const base = arg ?? cwd ?? process.cwd()
   const root = await findRepoRoot(base)
   if (!root) throw new Error(`no git repository found from ${path.resolve(base)}`)
