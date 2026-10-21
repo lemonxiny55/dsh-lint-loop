@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0-rc.0 — Evidence Integrity (unreleased)
+## 0.7.0 — Evidence Integrity (2026-10-21)
 
 - Add bounded read-only source checkpoints around DSH tool dispatch, including
   shell/bash/pwsh and custom scripts; retain effects after failure or cancellation.
@@ -13,7 +13,7 @@
 - Preserve regression-aware lint/type/test debt, bounded continuation and repair;
   refuse automatic repair of ambiguous evidence. Support explicit non-Git roots.
 - Validate pre-edit baseline integrity and stable source throughout final checks.
-  Hash with four bounded readers; retain one baseline sweep per turn and avoid
+  Hash with eight bounded readers; retain one baseline sweep per turn and avoid
   trusting mtime-only caches or reusing completion results across mutable inputs.
 - Include the isolated v0.6.1 current-directory compatibility fix. Add real shell
   experiments, exact latest DSH API checks, a deterministic-input real AgentLoop

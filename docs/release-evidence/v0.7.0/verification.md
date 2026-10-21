@@ -2,11 +2,11 @@
 
 Candidate: `0.7.0-rc.0`. Date: 2026-10-19.
 Status: **RELEASE CANDIDATE READY** for the documented bounded source scope.
-No npm publication, GitHub Release or merge has been performed or authorized.
+At the time this verification was captured, no npm publication, GitHub Release or merge had been performed.
 
 Optimized runtime source revision: `8ab76d3c00c97ef6501fcd4c5e2725d74a60e219`.
 The optimization changes the bounded checkpoint reader count from four to eight.
-The PR remains a reviewable draft.
+Final PR review and the four-job matrix remain release gates.
 
 ## Review and compatibility
 
@@ -39,7 +39,7 @@ The optimized runtime commit passed all four matrix jobs in [run 39259992219](ht
 with typecheck, tests, build, compatibility smoke, exact published DSH API and real AgentLoop demo in each job; captured details are in [ci-optimization.json](ci-optimization.json).
 Local actual command outputs are in
 [Node 22](node22.json) and [Node 24](node24.json). No tests are disabled or skipped
-to satisfy the gate. The final evidence commit also runs the full PR CI.
+to satisfy the gate. The final PR head is gated by the full Windows/Linux × Node 22/24 CI matrix.
 
 The suite covers real shell/bash/pwsh success, nonzero failure and cancellation;
 new/deleted/renamed/cross-directory files; pre-existing dirty bytes; same-target
@@ -145,3 +145,82 @@ filesystem calls can exceed cooperative deadlines. Unsupported/missing checks,
 uncertain attribution, symlinks, denied reads and exhausted budgets remain explicit
 **incomplete**, never a misleading CLEAN. These are scoped candidate limits, not
 claims of universal filesystem or CI coverage.
+
+## Final eight-reader package acceptance (2026-10-20)
+
+The preceding DSH Web/Desktop rows and `web/` / `desktop/` links above are the
+**historical four-reader acceptance** for bundle SHA256
+`1554b0cab8e729bbdb2c099538c159253fcd725e984da725721b1666c1adc4e1`. They do not
+represent the final candidate. The following runs installed the eight-reader
+candidate from the exact local npm pack archive and then exercised each real host.
+Both app profiles, DSH homes, and Desktop Electron user data were isolated under
+`.cache/host-final8`; the user's normal configuration and sessions were not used.
+
+| Item | Final eight-reader candidate |
+|---|---|
+| PR head inspected before acceptance | `b51c88f63dfbc4d3d2b4d0f8108a5fc9c654d2db` |
+| Source implementation | `8ab76d3c00c97ef6501fcd4c5e2725d74a60e219` |
+| npm pack file | `dsh-lint-loop-0.7.0-rc.0.tgz`, 128,768 bytes |
+| npm archive SHA256 | `acdc28228ca6af5797e4dff4ed73a2e5cd76b4479712627d4632664730e03ae9` |
+| npm manifest shasum / SRI | `347933a9e95120fddbd6ea136fdb781c7f5d8e61` / `sha512-0RCoPzoHqhmTFiAT+E+Cxx5vUEThvUjLv3Iy0WOT7dzt5YLBo4f1bVgSRE4ObhFg+vxj5TmNAw6UbRGf5Xbing==` |
+| `dist/index.js` SHA256 | `96d57d4c3f4cb053c41aac9fd7d9f657cbaf27466922792a38e18142ec837d5e` (151,520 bytes) |
+| Installed Web and Desktop `dist/index.js` | Both match the package bundle SHA256 above |
+
+| Host | Actual app / Node | Lifecycle and result |
+|---|---|---|
+| DSH Web | DSH `0.2.1-rc.2`, Node `24.19.0` | DSH CLI installed, loaded, uninstalled and reinstalled the local archive; final reload passed. AgentLoop ended normally; supervisor cleaned up the app process. |
+| Official DSH Desktop rc.2 | Desktop-bundled DSH `0.2.1-rc.2`, Node `24.21.0` | Official Desktop CLI performed install, load, uninstall and reinstall in its isolated Electron-managed profile; final reload passed. AgentLoop ended normally; supervisor cleaned up the app process. |
+
+The DSH lifecycle, file tools and check processes were real. Only model input was
+a deterministic scripted adapter. Each host emitted 20 real DSH events and a
+completed `turn/end`. Its four Quality Receipts were `regression`, `regression`,
+`clean`, `clean`, all with `complete` evidence coverage and the same three ignored
+historical debts. The first two receipts captured newly introduced lint,
+typecheck and test failures; the host ran the safe lint repair; final typecheck,
+impacted tests and lint were clean. Web/Desktop receipt structures matched after
+ignoring host-specific temp roots, timestamps and measured durations.
+
+Each actual Windows host ran native DSH `pwsh` success, exit-7 failure, and
+cancellation-after-write cases. All three retained their actual added file, marked
+the change `unattributed`, and returned `incomplete` coverage. In particular,
+exit 0 did not produce CLEAN. Real bash success/failure/cancellation and file
+change assertions are exercised by the Linux CI host tests/jobs; this Windows
+Desktop/Web run used the host's native pwsh tool. The deterministic evidence
+adapter cannot stand in for a live model, and no live model quality claim is made.
+
+Per-host evidence is retained in [`host-final8/web`](host-final8/web/) and
+[`host-final8/desktop`](host-final8/desktop/): package identity, lifecycle record,
+full Quality Receipts, full shell result records, concise summaries, host logs,
+and completion records. `acceptance.json` records the app executable, Node
+runtime, final candidate, verdicts and cleanup. The `.cache` archive itself is
+local test input; its recorded SHA256 identifies the exact installed package.
+
+The PR head's full CI run [39262086458](https://github.com/lemonxiny55/dsh-lint-loop/actions/runs/39262086458)
+completed successfully on all four Windows/Linux × Node 22/24 jobs (197 tests per
+job, typecheck, build and host/API smoke). The final release-candidate head must pass
+the same matrix before merge. The stable  .7.0 release archive prepared from
+that source is recorded below; publication and merge are still pending.
+
+## Stable release archive prepared from verified source (2026-10-21)
+
+The stable package metadata is `dsh-lint-loop@0.7.0`. It was built on the
+release worktree based on PR #8 head `b51c88f63dfbc4d3d2b4d0f8108a5fc9c654d2db`;
+the only runtime payload is the same eight-reader `dist/index.js` used by the
+Desktop/Web rc.0 acceptance. This separates the tested rc.0 host package identity
+from the exact stable archive intended for publication.
+
+| Item | Prepared stable archive |
+|---|---|
+| Archive | `dsh-lint-loop-0.7.0.tgz` |
+| Size | 128,670 bytes |
+| SHA256 | `344cedad9d8469436c69d0449c819d05f7f12348275069bab03543fb015d477b` |
+| Packed file list | `LICENSE`, `README.md`, `README.zh.md`, `cordis.patch.yml`, `dist/index.js`, `dist/index.js.map`, `package.json` |
+| `dist/index.js` | 151,520 bytes; SHA256 `96d57d4c3f4cb053c41aac9fd7d9f657cbaf27466922792a38e18142ec837d5e` |
+| Preparation checks | 197/197 tests, typecheck and build passed on Windows / Node 24.19.0 |
+
+`npm pack --ignore-scripts` produced this exact archive after the successful build;
+the npm cache was directed to the isolated worktree. The release should publish
+this exact archive so the published tarball hash matches the value above. The
+Desktop/Web runtime acceptance remains the separately identified rc.0 tarball
+(`acdc2822…03ae9`) whose installed bundle hash is identical. Final four-platform
+CI, merges and publication are pending; this document does not claim RELEASE READY.

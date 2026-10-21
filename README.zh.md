@@ -8,7 +8,7 @@
 
 Quality Loop 在首次编辑前捕获基线，只让可归因的新增问题触发修复与续轮。编辑后给出快速 lint 增量；任务完成前验证类型和受影响测试，用 Quality Receipt 说明实际检查了什么。
 
-**v0.7.0 — Evidence Integrity，尚未发布的候选版。** 完整参数见 [English README](README.md)。
+**v0.7.0 — Evidence Integrity。** 完整参数见 [English README](README.md)。
 
 新增有时间、条目数和字节预算的只读内容检查点，覆盖 shell/bash/pwsh、自定义脚本、
 新增、删除和跨目录重命名（保守表示为删除＋新增）。保留 edit/write 的历史债务保护和
@@ -19,19 +19,16 @@ Quality Receipt 新增 `evidenceCoverage`：记录范围、排除目录、SHA-25
 归因、实际结果、资源预算和缺口。DSH 文件工具的真实 before/after 与检查点比对；
 `quality_receipt` 会检查已保存回执是否过期。证据缺失、不完整或过期时不会返回 CLEAN。
 
-候选版只能本地构建安装，尚无对应 npm 发布：
+安装已发布版本：
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm build
-npm pack --ignore-scripts
-dsh plugin --profile web add /absolute/path/dsh-lint-loop-0.7.0-rc.0.tgz
+dsh plugin --profile web add dsh-lint-loop@0.7.0
 ```
 
 [架构与实验](docs/evidence-integrity.md) · [验证记录](docs/release-evidence/v0.7.0/verification.md) ·
 [真实 DSH 生命周期演示](docs/evidence-demo.md)。
 
-以下为**已发布 v0.6.0 的安装方式与历史演示**：
+以下为**上一版本 v0.6.0 的安装方式与历史演示**：
 
 ```sh
 dsh plugin --profile web add dsh-lint-loop@0.6.0

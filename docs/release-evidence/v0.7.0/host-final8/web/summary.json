@@ -1,0 +1,168 @@
+{
+  "host": "web",
+  "runtime": "DSH 0.2.1-rc.2",
+  "node": "v24.19.0",
+  "modelInput": "deterministic scripted adapter; actual AgentLoop and tools",
+  "completion": {
+    "type": "turn/end",
+    "seq": 62,
+    "time": 1792478847187,
+    "data": {
+      "turn": 1,
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  },
+  "agentToolEvents": 20,
+  "outcomes": [
+    {
+      "tool": "read",
+      "isError": false
+    },
+    {
+      "tool": "edit",
+      "isError": false
+    },
+    {
+      "tool": "quality_verify",
+      "isError": false
+    },
+    {
+      "tool": "lint_repair",
+      "isError": false
+    },
+    {
+      "tool": "quality_verify",
+      "isError": false
+    },
+    {
+      "tool": "read",
+      "isError": false
+    },
+    {
+      "tool": "edit",
+      "isError": false
+    },
+    {
+      "tool": "quality_verify",
+      "isError": false
+    },
+    {
+      "tool": "quality_receipt",
+      "isError": false
+    }
+  ],
+  "receipts": [
+    {
+      "index": 1,
+      "verdict": "regression",
+      "status": "complete",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "ignoredHistoricalDebt": 3,
+      "checkpoints": 5,
+      "bytesHashed": 3061,
+      "elapsedMs": 20
+    },
+    {
+      "index": 2,
+      "verdict": "regression",
+      "status": "complete",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "ignoredHistoricalDebt": 3,
+      "checkpoints": 9,
+      "bytesHashed": 5519,
+      "elapsedMs": 35
+    },
+    {
+      "index": 3,
+      "verdict": "clean",
+      "status": "complete",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "ignoredHistoricalDebt": 3,
+      "checkpoints": 14,
+      "bytesHashed": 8586,
+      "elapsedMs": 61
+    },
+    {
+      "index": 4,
+      "verdict": "clean",
+      "status": "complete",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "ignoredHistoricalDebt": 3,
+      "checkpoints": 14,
+      "bytesHashed": 8586,
+      "elapsedMs": 61
+    }
+  ],
+  "shellCases": [
+    {
+      "outcome": "success",
+      "shell": "pwsh",
+      "exitCode": 0,
+      "signal": null,
+      "aborted": false,
+      "status": "incomplete",
+      "changedFiles": [
+        "shell-success.js"
+      ],
+      "change": [
+        {
+          "file": "shell-success.js",
+          "operation": "added",
+          "outcome": "success",
+          "attribution": "unattributed"
+        }
+      ],
+      "actualFileExists": true
+    },
+    {
+      "outcome": "failure",
+      "shell": "pwsh",
+      "exitCode": 7,
+      "signal": null,
+      "aborted": false,
+      "status": "incomplete",
+      "changedFiles": [
+        "shell-failure.js"
+      ],
+      "change": [
+        {
+          "file": "shell-failure.js",
+          "operation": "added",
+          "outcome": "failure",
+          "attribution": "unattributed"
+        }
+      ],
+      "actualFileExists": true
+    },
+    {
+      "outcome": "cancelled",
+      "shell": "pwsh",
+      "exitCode": null,
+      "signal": null,
+      "aborted": true,
+      "status": "incomplete",
+      "changedFiles": [
+        "shell-cancelled.js"
+      ],
+      "change": [
+        {
+          "file": "shell-cancelled.js",
+          "operation": "added",
+          "outcome": "cancelled",
+          "attribution": "unattributed"
+        }
+      ],
+      "actualFileExists": true
+    }
+  ]
+}

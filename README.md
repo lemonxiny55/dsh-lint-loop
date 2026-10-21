@@ -8,7 +8,7 @@
 
 Compare the agent's changes with evidence captured **before the first edit**. Keep historical failures visible, repair new lint regressions safely, and verify types and impacted tests before completion.
 
-**v0.7.0 — Evidence Integrity (unreleased candidate)**
+**v0.7.0 — Evidence Integrity**
 English | [中文](README.zh.md)
 
 Bounded, read-only content checkpoints now cover shell/bash/pwsh, custom scripts,
@@ -23,20 +23,17 @@ content identities, attribution, actual outcomes, budgets and uncertainty. Direc
 DSH commits are checked against their canonical before/after bytes. A saved receipt
 is checked for staleness before the `quality_receipt` tool displays it.
 
-Build and install this candidate locally; it is **not published to npm**:
+Install the released package:
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm build
-npm pack --ignore-scripts
-dsh plugin --profile web add /absolute/path/dsh-lint-loop-0.7.0-rc.0.tgz
+dsh plugin --profile web add dsh-lint-loop@0.7.0
 ```
 
 [Architecture, limits and experiments](docs/evidence-integrity.md) ·
-[Candidate verification](docs/release-evidence/v0.7.0/verification.md) ·
+[Release verification](docs/release-evidence/v0.7.0/verification.md) ·
 [Reproduce the actual DSH lifecycle demo](docs/evidence-demo.md).
 
-**Released v0.6.0 installation and historical demo:**
+**Previous release v0.6.0 installation and historical demo:**
 
 ```sh
 dsh plugin --profile web add dsh-lint-loop@0.6.0
