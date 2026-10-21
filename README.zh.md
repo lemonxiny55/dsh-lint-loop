@@ -26,6 +26,8 @@ dsh plugin --profile web add dsh-lint-loop@0.7.0
 ```
 
 [架构与实验](docs/evidence-integrity.md) · [验证记录](docs/release-evidence/v0.7.0/verification.md) ·
+[v0.7.0 正式 Release](https://github.com/lemonxiny55/dsh-lint-loop/releases/tag/v0.7.0) ·
+[npm v0.7.0](https://www.npmjs.com/package/dsh-lint-loop/v/0.7.0) ·
 [真实 DSH 生命周期演示](docs/evidence-demo.md)。
 
 以下为**上一版本 v0.6.0 的安装方式与历史演示**：
