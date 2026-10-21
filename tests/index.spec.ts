@@ -26,7 +26,7 @@ interface Mounted {
   disposed: () => { tools: number; sections: number; listeners: number }
 }
 
-function mount(pluginConfig?: Record<string, unknown>): Mounted {
+function mount(pluginConfig?: Record<string, unknown>, workingDirectory?: { get(session: object): string }): Mounted {
   const registered: string[] = []
   const entries: Array<{ name: string; listener: Listener }> = []
   let disposedTools = 0
@@ -36,6 +36,8 @@ function mount(pluginConfig?: Record<string, unknown>): Mounted {
   let disposeEffect: (() => void) | undefined
 
   const ctx = {
+    get(name: string) { return name === 'workingDirectory' ? workingDirectory : undefined },
+    get workingDirectory(): never { throw new Error('undeclared Cordis service read') },
     effect(fn: () => void | (() => void)) {
       disposeEffect = fn() ?? undefined
     },
@@ -108,6 +110,26 @@ afterEach(async () => {
 })
 
 describe('plugin lifecycle', () => {
+  it('uses the current DSH workingDirectory projection after cd and keeps the header immutable', async () => {
+    const original = await makeFixtureRepo(), current = await makeFixtureRepo()
+    await current.write('eslint.config.mjs', 'export default []')
+    const file = await current.write('src/current.ts', 'export const current = 1')
+    const session = { id: 'cwd-projection', header: { cwd: original.root } }
+    const mounted = mount(PLUGIN_CONFIG, { get: () => current.root })
+    const execution = { name: 'edit', arguments: { file_path: 'src/current.ts' }, agent: { session } }
+    try {
+      await mounted.listenersFor('tools/execute')[0](execution, async () => {
+        await current.write('src/current.ts', 'export const current = 2')
+        return { isError: false, value: { path: file, before: 'export const current = 1', after: 'export const current = 2' }, content: [] }
+      }, undefined)
+      expect(turnEditedFiles(ownerFromActor(execution))).toEqual([file])
+      const diagnostics = tools.find((tool) => tool.name === 'lint_diagnostics')!
+      const context = { name: 'lint_diagnostics', arguments: {}, agent: { session } }
+      const result = await mounted.listenersFor('tools/execute')[0](context, () => diagnostics.execute({ file_path: 'src/current.ts' }, context as never), undefined)
+      expect(result).toEqual([])
+      expect(session.header.cwd).toBe(original.root)
+    } finally { mounted.dispose() }
+  })
   it('registers tools + section + mutation tracking + gate listener, disposes all, and can mount again', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
 

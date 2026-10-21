@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1-rc.0 (unreleased)
+
+- Use the optional DSH workingDirectory projection after session directory changes. Keep immutable session headers unchanged and retain the older-host fallback.
+- Cover edit attribution and diagnostic resolution after switching to a different repository.
+
+
 All notable changes to dsh-lint-loop are documented here.
 
 ## 0.6.0 — Quality Loop (2026-10-08)
