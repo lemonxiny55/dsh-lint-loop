@@ -26,11 +26,12 @@ import {
 import { frameFor } from './frames.js'
 import { markDirty } from './gate.js'
 import { LintManager, managerForRoot, type FixResult } from './manager.js'
-import { findRepoRoot, resolveFileInRoot } from './workspace.js'
+import { findWorkspaceRoot, resolveFileInRoot } from './workspace.js'
 import { repairStatus, repairTurn } from './repair.js'
-import { qualityReceipt, verifyQuality, recordQualityRepair } from './quality.js'
+import { currentQualityReceipt, verifyQuality, recordQualityRepair } from './quality.js'
 import { qualityCallView, qualityResultView } from './quality-view.js'
 import { actorCwd } from './regression.js'
+import { auditCoverage, beginCheckpoint, endCheckpoint, hasEvidence } from './evidence.js'
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 
@@ -120,8 +121,8 @@ function friendlyMessage(error: unknown): string {
 async function resolveRoot(arg: string | undefined, exec: ToolRunExec): Promise<string> {
   const cwd = actorCwd(exec)
   const base = arg ?? cwd ?? process.cwd()
-  const root = await findRepoRoot(base)
-  if (!root) throw new Error(`no git repository found from ${path.resolve(base)}`)
+  const root = await findWorkspaceRoot(base)
+  if (!root) throw new Error(`no workspace found from ${path.resolve(base)}`)
   return root
 }
 
@@ -225,11 +226,11 @@ export const tools = [
     name: 'quality_receipt',
     presentCall: () => ({ card: 'generic', kind: 'read', title: 'Quality · last receipt' }),
     presentResult: qualityResultView,
-    description: 'Read the last Quality Receipt for this session/repository, including verification scope and limitations. Runs no checks.',
+    description: 'Read the last Quality Receipt and check its source digest for staleness. Stale evidence is incomplete. Runs no lint/typecheck/test commands.',
     parameters: { repoRoot: { type: 'string', description: 'Optional repository root.' } },
     output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value: Record<string, JsonValue>): TextBlock[] => [{ type: 'text', text: JSON.stringify(value, null, 2) }] },
     async execute(args: { repoRoot?: string }, exec: ToolRunExec): Promise<Record<string, JsonValue>> {
-      try { return (qualityReceipt(await resolveRoot(args.repoRoot, exec), ownerForExec(exec)) ?? { note: 'No completion verification has run for this session.' }) as unknown as Record<string, JsonValue> }
+      try { return (await currentQualityReceipt(await resolveRoot(args.repoRoot, exec), ownerForExec(exec)) ?? { note: 'No completion verification has run for this session.' }) as unknown as Record<string, JsonValue> }
       catch (error) { return { error: friendlyMessage(error) } }
     },
   }),
@@ -495,6 +496,7 @@ export const tools = [
         const owner = ownerForExec(exec)
         let beforeFix: Finding[]
         const alreadyTracked = hasBaseline(owner, abs)
+        if (hasEvidence(root, owner) && (await auditCoverage(root, owner)).status !== 'complete') return { error: 'evidence coverage incomplete; unsafe to attribute repairs' }
         if (alreadyTracked && !hasAuthoritativeBaseline(owner, abs)) return { error: 'pre-edit lint baseline unavailable; safe repair cannot attribute regressions' }
         // A direct lint_fix call has no earlier lint result to use as a
         // baseline. Establish one before the fixer runs; the post-fix lint is
@@ -509,7 +511,10 @@ export const tools = [
           beforeFix = await manager.lintFile(abs)
         }
         const beforeDelta = classifyFindings(owner, abs, beforeFix)
-        const result = await manager.fixFile(abs, alreadyTracked ? [...beforeDelta.introduced, ...beforeDelta.changed] : undefined, exec.signal)
+        const checkpoint = await beginCheckpoint(root, owner, 'edit', abs, exec.signal)
+        let result
+        try { result = await manager.fixFile(abs, alreadyTracked ? [...beforeDelta.introduced, ...beforeDelta.changed] : undefined, exec.signal) }
+        finally { await endCheckpoint(checkpoint, exec.signal?.aborted ? 'cancelled' : 'success') }
         const delta = classifyFindings(owner, abs, result.remaining)
         const fixDiff = matchFindings(beforeFix, result.remaining)
         const resolved = fixDiff.unmatchedPrevious.map((index) => ({ ...beforeFix[index], scope: 'resolved' as const }))

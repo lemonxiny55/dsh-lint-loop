@@ -8,8 +8,32 @@
 
 Compare the agent's changes with evidence captured **before the first edit**. Keep historical failures visible, repair new lint regressions safely, and verify types and impacted tests before completion.
 
-**v0.6.0 — Quality Loop**
+**v0.7.0 — Evidence Integrity**
 English | [中文](README.zh.md)
+
+Bounded, read-only content checkpoints now cover shell/bash/pwsh, custom scripts,
+additions, deletions and cross-directory renames (reported conservatively as
+delete/add). Existing edit/write repair semantics remain. Temporal observation
+does **not** establish authorship: external or ambiguous changes enter verification
+scope but never become automatic repair targets. Missing, stale or partial evidence
+is `incomplete`, even when the checks that did execute passed.
+
+The additive `evidenceCoverage` receipt field records scope, exclusions, SHA-256
+content identities, attribution, actual outcomes, budgets and uncertainty. Direct
+DSH commits are checked against their canonical before/after bytes. A saved receipt
+is checked for staleness before the `quality_receipt` tool displays it.
+
+Install the released package:
+
+```sh
+dsh plugin --profile web add dsh-lint-loop@0.7.0
+```
+
+[Architecture, limits and experiments](docs/evidence-integrity.md) ·
+[Release verification](docs/release-evidence/v0.7.0/verification.md) ·
+[Reproduce the actual DSH lifecycle demo](docs/evidence-demo.md).
+
+**Previous release v0.6.0 installation and historical demo:**
 
 ```sh
 dsh plugin --profile web add dsh-lint-loop@0.6.0
@@ -103,6 +127,8 @@ Use `balanced` unless you have a reason to change it. Override the existing `lin
 | `qualityTimeoutMs` | preset | total budget for each baseline, completion or repair sweep |
 | `qualityMaxFiles` | `2000` | discovery entry budget, including directories |
 | `qualityMaxChecks` | `32` | maximum package typecheck/test attempts per sweep |
+| `trackingTimeoutMs` | `2000` | cooperative time budget per read-only source checkpoint |
+| `trackingMaxBytes`, `trackingMaxFileBytes` | `33554432`, `2097152` | shared scan and individual file byte limits |
 | `gate`, `gateMaxSteers`, `gateSeverity` | `true`, `2`, `error` | bounded continuation and lint severity |
 | `autoInject`, `settleMs`, `sectionTtlMs`, `sectionSeverity` | `true`, `600`, `30000`, `error` | post-edit prompt feedback |
 | `linters`, `linterPath` | auto, `{}` | existing linter selection and executable overrides |

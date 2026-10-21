@@ -5,7 +5,7 @@ import { invalidateProbes } from '../src/detect.js'
 import { clearGateState, handleTurnStopping, markDirty } from '../src/gate.js'
 import { type Finding, matchFindings } from '../src/findings.js'
 import { disposeAllManagers, managerForRoot } from '../src/manager.js'
-import { prepareMutation } from '../src/regression.js'
+import { prepareMutation, recordSuccessfulToolMutation } from '../src/regression.js'
 import { tools } from '../src/tools.js'
 import { fakeLinterPath, makeFixtureRepo } from './helpers/fixtures.js'
 
@@ -122,12 +122,15 @@ describe('regression-aware manager, tools, and gate', () => {
     const session = {}
     await prepareMutation(file, { agent: { session } })
     await repo.write('src/gated.ts', 'const old = 1 // lint: error old-rule old debt\nconst fresh = 2 // lint: error fresh-rule new\n')
+    await recordSuccessfulToolMutation(file, { agent: { session } })
     const agent = { id: 'regression-session', session, steer: vi.fn() }
     markDirty(file, session)
     await handleTurnStopping({ agent, turn: 1 })
     expect(agent.steer).toHaveBeenCalledTimes(1)
 
+    await prepareMutation(file, { agent: { session } })
     await repo.write('src/gated.ts', 'const old = 1 // lint: error old-rule old debt\nconst fresh = 2\n')
+    await recordSuccessfulToolMutation(file, { agent: { session } })
     markDirty(file, session)
     await handleTurnStopping({ agent, turn: 1 })
     expect(agent.steer).toHaveBeenCalledTimes(1)
@@ -158,6 +161,7 @@ describe('regression-aware manager, tools, and gate', () => {
     const session = {}
     await prepareMutation(file, { agent: { session } })
     await repo.write('src/fix.ts', 'const old = 1 // lint: error old-rule old debt\nconst fresh = 2 // lint: error fresh-rule new [fixable]\n')
+    await recordSuccessfulToolMutation(file, { agent: { session } })
     const execute = lintFix.execute as (args: unknown, context: unknown) => Promise<unknown>
     const result = await execute({ file_path: 'src/fix.ts' }, exec(repo.root, session)) as Record<string, unknown>
     expect(result.fixed).toBe(true)

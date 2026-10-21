@@ -4,6 +4,10 @@ import type { Severity } from './findings.js'
 import { LINTER_KEYS, type LinterKey } from './linters.js'
 
 export interface PluginConfig {
+  /** Read-only source checkpoint budgets; exhaustion makes evidence incomplete. */
+  trackingTimeoutMs?: number
+  trackingMaxBytes?: number
+  trackingMaxFileBytes?: number
   /** Quality Loop preset. Advanced fields override the preset. */
   mode?: 'fast' | 'balanced' | 'strict'
   /** Completion checks; fast intentionally skips typecheck and tests. */
@@ -44,6 +48,9 @@ export interface PluginConfig {
 }
 
 interface EffectiveConfig {
+  trackingTimeoutMs: number
+  trackingMaxBytes: number
+  trackingMaxFileBytes: number
   mode: 'fast' | 'balanced' | 'strict'
   completionChecks: boolean
   qualityTimeoutMs: number
@@ -72,6 +79,9 @@ function asSeverity(value: Severity | undefined, fallback: Severity): Severity {
 }
 
 const DEFAULTS: EffectiveConfig = {
+  trackingTimeoutMs: 2_000,
+  trackingMaxBytes: 32 * 1024 * 1024,
+  trackingMaxFileBytes: 2 * 1024 * 1024,
   mode: 'balanced',
   completionChecks: true,
   qualityTimeoutMs: 60_000,
@@ -114,6 +124,9 @@ export function applyConfig(partial?: PluginConfig): void {
     linterPath: { ...partial?.linterPath },
   }
   state.current.mode = mode
+  state.current.trackingTimeoutMs = coerceInt(partial?.trackingTimeoutMs, DEFAULTS.trackingTimeoutMs, 1)
+  state.current.trackingMaxBytes = coerceInt(partial?.trackingMaxBytes, DEFAULTS.trackingMaxBytes, 1)
+  state.current.trackingMaxFileBytes = coerceInt(partial?.trackingMaxFileBytes, DEFAULTS.trackingMaxFileBytes, 1)
   state.current.completionChecks = partial?.completionChecks ?? preset.completionChecks
   state.current.qualityTimeoutMs = coerceInt(partial?.qualityTimeoutMs, preset.qualityTimeoutMs, 1_000)
   state.current.qualityMaxFiles = coerceInt(partial?.qualityMaxFiles, preset.qualityMaxFiles, 1)

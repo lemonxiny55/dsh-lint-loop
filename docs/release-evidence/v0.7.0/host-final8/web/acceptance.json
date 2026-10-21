@@ -1,0 +1,26 @@
+{
+  "host": "web",
+  "executable": "<local-path-redacted>",
+  "args": [
+    "<local-path-redacted>",
+    "--profile",
+    "evidence-web",
+    "--patch",
+    "<local-path-redacted>",
+    "--no-open",
+    "--port",
+    "0"
+  ],
+  "node": "v24.19.0",
+  "pid": 5064,
+  "installedCandidate": "0.7.0-rc.0",
+  "result": "passed",
+  "verdicts": [
+    "regression",
+    "regression",
+    "clean",
+    "clean"
+  ],
+  "capturedAt": "2026-10-20T06:47:35.783Z",
+  "shutdown": "agent handle disposed normally; app process tree stopped by acceptance supervisor"
+}

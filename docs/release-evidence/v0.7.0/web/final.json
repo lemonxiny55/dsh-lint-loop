@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-19T12:10:03.657Z",
+  "evidenceCoverage": {
+    "digest": "f3842219c3c52c58325a35891fd1ef2333d3333808246b0e34a6d407a538f8c1",
+    "status": "complete",
+    "scope": "bounded-workspace-source-tree",
+    "exclusions": [
+      ".git",
+      "node_modules",
+      "dist",
+      "build",
+      "coverage",
+      ".cache",
+      ".next",
+      ".turbo"
+    ],
+    "reasons": [],
+    "changes": [
+      {
+        "file": "src/a.js",
+        "before": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+        "after": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+        "operation": "modified",
+        "tool": "edit",
+        "outcome": "success",
+        "attribution": "tool-target"
+      },
+      {
+        "file": "src/a.js",
+        "before": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+        "after": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+        "operation": "modified",
+        "tool": "edit",
+        "outcome": "success",
+        "attribution": "tool-target"
+      },
+      {
+        "file": "src/a.js",
+        "before": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+        "after": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+        "operation": "modified",
+        "tool": "edit",
+        "outcome": "success",
+        "attribution": "tool-target"
+      }
+    ],
+    "checkpoints": 14,
+    "bytesHashed": 8586,
+    "elapsedMs": 73
+  },
+  "mode": "balanced",
+  "root": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV",
+  "changedFiles": [
+    "src/a.js"
+  ],
+  "newlyIntroducedRegressions": [],
+  "unattributedFindings": [],
+  "autoFixed": [
+    {
+      "check": "lint",
+      "identity": "src/a.js|eslint|error|semi|missing semicolon."
+    }
+  ],
+  "agentFixed": [
+    {
+      "check": "typecheck:.",
+      "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+    }
+  ],
+  "ignoredHistoricalDebt": [
+    {
+      "check": "lint",
+      "identity": "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+    },
+    {
+      "check": "typecheck:.",
+      "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+    }
+  ],
+  "lint": "clean",
+  "typecheck": "clean",
+  "tests": "clean",
+  "selection": {
+    "strategy": "dependency",
+    "files": [
+      "tests/a.test.js"
+    ],
+    "reasons": [
+      "transitive reverse imports, including changed tests"
+    ],
+    "complete": true
+  },
+  "checksExecuted": [
+    {
+      "id": "lint:src/a.js",
+      "kind": "lint",
+      "scope": "src/a.js",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\node_modules\\.bin\\eslint.cmd",
+      "args": [
+        "--no-warn-ignored",
+        "-f",
+        "json",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\src\\a.js"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+      ],
+      "executed": [],
+      "elapsedMs": 250,
+      "invocations": [
+        {
+          "command": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\node_modules\\.bin\\eslint.cmd",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\src\\a.js"
+          ],
+          "cwd": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV"
+        }
+      ]
+    },
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+      ],
+      "executed": [],
+      "elapsedMs": 331,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\tests\\a.test.js"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.js|a",
+        "tests/a.test.js|historical"
+      ],
+      "elapsedMs": 539,
+      "skipped": []
+    }
+  ],
+  "baselineChecks": [
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+      ],
+      "executed": [],
+      "elapsedMs": 395,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Programs\\node-v24.19.0\\node.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-zAyxoV\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.js|a",
+        "tests/a.test.js|historical",
+        "tests/b.test.js|unrelated"
+      ],
+      "elapsedMs": 793,
+      "skipped": []
+    }
+  ],
+  "repairRounds": 1,
+  "continuationRounds": 0,
+  "elapsedMs": 1137,
+  "finalVerdict": "clean",
+  "reasons": []
+}

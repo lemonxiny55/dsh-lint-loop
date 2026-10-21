@@ -1,10 +1,27 @@
 # Changelog
 
-## 0.6.1-rc.0 (unreleased)
+## 0.7.0 — Evidence Integrity (2026-10-21)
 
-- Use the optional DSH workingDirectory projection after session directory changes. Keep immutable session headers unchanged and retain the older-host fallback.
-- Cover edit attribution and diagnostic resolution after switching to a different repository.
+- Add bounded read-only source checkpoints around DSH tool dispatch, including
+  shell/bash/pwsh and custom scripts; retain effects after failure or cancellation.
+- Separate tool targets from unattributed observations. Track creation, deletion,
+  mode changes and delete/add renames without Git commands or workspace rewinds.
+- Validate canonical file commit bytes and authoritative final tool outcomes;
+  detect concurrent changes, overlapping sessions, unstable reads and stale receipts.
+- Add explicit evidence coverage and unattributed diagnostics. Missing coverage,
+  symlinks, permissions, exhausted budgets and general execution cannot claim CLEAN.
+- Preserve regression-aware lint/type/test debt, bounded continuation and repair;
+  refuse automatic repair of ambiguous evidence. Support explicit non-Git roots.
+- Validate pre-edit baseline integrity and stable source throughout final checks.
+  Hash with eight bounded readers; retain one baseline sweep per turn and avoid
+  trusting mtime-only caches or reusing completion results across mutable inputs.
+- Include the isolated v0.6.1 current-directory compatibility fix. Add real shell
+  experiments, exact latest DSH API checks, a deterministic-input real AgentLoop
+  demo, performance scripts and bilingual documentation.
+- Defer optional code-index 0.10.1 integration: its public graph can suggest tests,
+  but a proven exhaustive selection benefit has not been established.
 
+No npm publication, release or merge is implied by this candidate.
 
 All notable changes to dsh-lint-loop are documented here.
 

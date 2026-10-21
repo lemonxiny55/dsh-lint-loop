@@ -1,0 +1,32 @@
+{
+  "host": "desktop",
+  "prHead": "b51c88f63dfbc4d3d2b4d0f8108a5fc9c654d2db",
+  "runtimeSourceCommit": "8ab76d3c00c97ef6501fcd4c5e2725d74a60e219",
+  "package": {
+    "name": "dsh-lint-loop",
+    "version": "0.7.0-rc.0",
+    "path": "../../../../../../.cache/host-final8/package/dsh-lint-loop-0.7.0-rc.0.tgz",
+    "size": 128768,
+    "sha256": "acdc28228ca6af5797e4dff4ed73a2e5cd76b4479712627d4632664730e03ae9",
+    "npmShasum": "347933a9e95120fddbd6ea136fdb781c7f5d8e61",
+    "npmIntegrity": "sha512-0RCoPzoHqhmTFiAT+E+Cxx5vUEThvUjLv3Iy0WOT7dzt5YLBo4f1bVgSRE4ObhFg+vxj5TmNAw6UbRGf5Xbing=="
+  },
+  "bundle": {
+    "path": "node_modules/dsh-lint-loop/dist/index.js",
+    "size": 151520,
+    "sha256": "96d57d4c3f4cb053c41aac9fd7d9f657cbaf27466922792a38e18142ec837d5e"
+  },
+  "installedPackage": {
+    "version": "0.7.0-rc.0",
+    "main": "./dist/index.js",
+    "profile": "desktop"
+  },
+  "hostRuntime": {
+    "node": "v24.21.0",
+    "dsh": "0.2.1-rc.2",
+    "outcome": "passed",
+    "pid": 31976,
+    "shutdown": "agent handle disposed normally; app process tree stopped by acceptance supervisor"
+  },
+  "verifiedAt": "2026-10-20T06:49:35.432Z"
+}

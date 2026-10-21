@@ -1,0 +1,19 @@
+{
+  "host": "desktop",
+  "executable": "<local-path-redacted>",
+  "args": [
+    "--user-data-dir=<local-path-redacted>"
+  ],
+  "node": "v24.21.0",
+  "pid": 31976,
+  "installedCandidate": "0.7.0-rc.0",
+  "result": "passed",
+  "verdicts": [
+    "regression",
+    "regression",
+    "clean",
+    "clean"
+  ],
+  "capturedAt": "2026-10-20T06:49:35.432Z",
+  "shutdown": "agent handle disposed normally; app process tree stopped by acceptance supervisor"
+}

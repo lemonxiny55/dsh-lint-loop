@@ -1,0 +1,15 @@
+
+Checking for update
+Update for version 0.2.1-rc.2 is not available (latest version: 0.2.1-rc.2, downgrade is disallowed).
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+dsh web: http://127.0.0.1:57679/?token=<redacted>
+{"demo":"passed","output":"<local-path-redacted>","verdicts":["regression","regression","clean","clean"],"debt":3}
+[evidence-demo] actual pwsh success/failure/cancellation passed

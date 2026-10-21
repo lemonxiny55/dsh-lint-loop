@@ -1,0 +1,12 @@
+[dsh-lint-loop] plugin loaded
+[dsh-lint-loop] registered tool: quality_verify
+[dsh-lint-loop] registered tool: quality_receipt
+[dsh-lint-loop] registered tool: lint_status
+[dsh-lint-loop] registered tool: lint_repair
+[dsh-lint-loop] registered tool: lint_diagnostics
+[dsh-lint-loop] registered tool: lint_workspace_errors
+[dsh-lint-loop] registered tool: lint_fix
+[dsh-lint-loop] completion gate armed (agent/turn-stopping)
+dsh web: http://127.0.0.1:52278/?token=<redacted>
+{"demo":"passed","output":"D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\host-demo-web\\output","verdicts":["regression","regression","clean","clean"],"debt":3}
+[evidence-demo] actual pwsh success/failure/cancellation passed

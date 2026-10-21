@@ -1,0 +1,227 @@
+{
+  "node": "v24.19.0",
+  "platform": "win32",
+  "protocol": "one warmup + 5 samples; scenarios=shell-batch-lifecycle; Quality Receipt scope assertions and before/after semantics equality; 5ms memory sampling; completionChecks=false; shell-batch-lifecycle applies deterministic edits in the exec event callback without child-shell startup",
+  "results": [
+    {
+      "entry": ".cache\\benchmark-readers\\8\\index.mjs",
+      "files": 100,
+      "scenario": "shell-batch-lifecycle",
+      "measuredSamples": 5,
+      "warmups": 1,
+      "receiptSemantics": [
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f"
+      ],
+      "firstEditMedianMs": 40.22109999999975,
+      "firstEditP95Ms": 41.553459999999724,
+      "repeatEditMedianMs": 40.22109999999975,
+      "repeatEditP95Ms": 41.553459999999724,
+      "peakHeapDeltaMedianBytes": 2832376,
+      "peakHeapDeltaP95Bytes": 3079332.8,
+      "peakRssDeltaMedianBytes": 49152,
+      "peakRssDeltaP95Bytes": 1710489.5999999996,
+      "samples": [
+        {
+          "firstEditMs": 38.11419999999998,
+          "repeatEditMs": 38.11419999999998,
+          "peakHeapDeltaBytes": 3005816,
+          "peakRssDeltaBytes": 1966080
+        },
+        {
+          "firstEditMs": 40.22109999999975,
+          "repeatEditMs": 40.22109999999975,
+          "peakHeapDeltaBytes": 3097712,
+          "peakRssDeltaBytes": 49152
+        },
+        {
+          "firstEditMs": 41.6895999999997,
+          "repeatEditMs": 41.6895999999997,
+          "peakHeapDeltaBytes": 2568952,
+          "peakRssDeltaBytes": 28672
+        },
+        {
+          "firstEditMs": 40.21739999999954,
+          "repeatEditMs": 40.21739999999954,
+          "peakHeapDeltaBytes": 2832376,
+          "peakRssDeltaBytes": 0
+        },
+        {
+          "firstEditMs": 41.00889999999981,
+          "repeatEditMs": 41.00889999999981,
+          "peakHeapDeltaBytes": 2827080,
+          "peakRssDeltaBytes": 688128
+        }
+      ]
+    },
+    {
+      "entry": ".cache\\benchmark-readers\\8\\index.mjs",
+      "files": 1000,
+      "scenario": "shell-batch-lifecycle",
+      "measuredSamples": 5,
+      "warmups": 1,
+      "receiptSemantics": [
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d"
+      ],
+      "firstEditMedianMs": 310.77850000000035,
+      "firstEditP95Ms": 317.2986000000004,
+      "repeatEditMedianMs": 310.77850000000035,
+      "repeatEditP95Ms": 317.2986000000004,
+      "peakHeapDeltaMedianBytes": 13279288,
+      "peakHeapDeltaP95Bytes": 13478816,
+      "peakRssDeltaMedianBytes": 176128,
+      "peakRssDeltaP95Bytes": 457113.5999999999,
+      "samples": [
+        {
+          "firstEditMs": 318.0683000000008,
+          "repeatEditMs": 318.0683000000008,
+          "peakHeapDeltaBytes": 6907504,
+          "peakRssDeltaBytes": 90112
+        },
+        {
+          "firstEditMs": 310.77850000000035,
+          "repeatEditMs": 310.77850000000035,
+          "peakHeapDeltaBytes": 7132016,
+          "peakRssDeltaBytes": 188416
+        },
+        {
+          "firstEditMs": 303.5028000000002,
+          "repeatEditMs": 303.5028000000002,
+          "peakHeapDeltaBytes": 13279288,
+          "peakRssDeltaBytes": 176128
+        },
+        {
+          "firstEditMs": 314.21979999999894,
+          "repeatEditMs": 314.21979999999894,
+          "peakHeapDeltaBytes": 13296256,
+          "peakRssDeltaBytes": 53248
+        },
+        {
+          "firstEditMs": 307.28289999999834,
+          "repeatEditMs": 307.28289999999834,
+          "peakHeapDeltaBytes": 13524456,
+          "peakRssDeltaBytes": 524288
+        }
+      ]
+    },
+    {
+      "entry": "dist\\index.js",
+      "files": 100,
+      "scenario": "shell-batch-lifecycle",
+      "measuredSamples": 5,
+      "warmups": 1,
+      "receiptSemantics": [
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f",
+        "4980413d8fb6df3699faa1ca5bc612d167f658ac791fd72aa77db4ce3d84858f"
+      ],
+      "firstEditMedianMs": 34.76080000000002,
+      "firstEditP95Ms": 38.04320000000225,
+      "repeatEditMedianMs": 34.76080000000002,
+      "repeatEditP95Ms": 38.04320000000225,
+      "peakHeapDeltaMedianBytes": 6608080,
+      "peakHeapDeltaP95Bytes": 6625379.2,
+      "peakRssDeltaMedianBytes": 790528,
+      "peakRssDeltaP95Bytes": 1177190.4,
+      "samples": [
+        {
+          "firstEditMs": 35.36840000000302,
+          "repeatEditMs": 35.36840000000302,
+          "peakHeapDeltaBytes": 6608080,
+          "peakRssDeltaBytes": 1224704
+        },
+        {
+          "firstEditMs": 38.71190000000206,
+          "repeatEditMs": 38.71190000000206,
+          "peakHeapDeltaBytes": 6604432,
+          "peakRssDeltaBytes": 790528
+        },
+        {
+          "firstEditMs": 33.6288999999997,
+          "repeatEditMs": 33.6288999999997,
+          "peakHeapDeltaBytes": 6619920,
+          "peakRssDeltaBytes": 565248
+        },
+        {
+          "firstEditMs": 34.49789999999848,
+          "repeatEditMs": 34.49789999999848,
+          "peakHeapDeltaBytes": 6626744,
+          "peakRssDeltaBytes": 176128
+        },
+        {
+          "firstEditMs": 34.76080000000002,
+          "repeatEditMs": 34.76080000000002,
+          "peakHeapDeltaBytes": 6604168,
+          "peakRssDeltaBytes": 987136
+        }
+      ]
+    },
+    {
+      "entry": "dist\\index.js",
+      "files": 1000,
+      "scenario": "shell-batch-lifecycle",
+      "measuredSamples": 5,
+      "warmups": 1,
+      "receiptSemantics": [
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d",
+        "a9e4a116ee17992fe7828b1a984a8dd7eb1c1c8f6245fb3acccf654fe93d9c1d"
+      ],
+      "firstEditMedianMs": 266.7872999999963,
+      "firstEditP95Ms": 271.7852799999993,
+      "repeatEditMedianMs": 266.7872999999963,
+      "repeatEditP95Ms": 271.7852799999993,
+      "peakHeapDeltaMedianBytes": 26628512,
+      "peakHeapDeltaP95Bytes": 26965657.6,
+      "peakRssDeltaMedianBytes": 1638400,
+      "peakRssDeltaP95Bytes": 22804889.599999994,
+      "samples": [
+        {
+          "firstEditMs": 272.03930000000037,
+          "repeatEditMs": 272.03930000000037,
+          "peakHeapDeltaBytes": 26628512,
+          "peakRssDeltaBytes": 28012544
+        },
+        {
+          "firstEditMs": 265.84430000000066,
+          "repeatEditMs": 265.84430000000066,
+          "peakHeapDeltaBytes": 26188096,
+          "peakRssDeltaBytes": 1974272
+        },
+        {
+          "firstEditMs": 270.7691999999952,
+          "repeatEditMs": 270.7691999999952,
+          "peakHeapDeltaBytes": 26855840,
+          "peakRssDeltaBytes": 1523712
+        },
+        {
+          "firstEditMs": 264.1328999999969,
+          "repeatEditMs": 264.1328999999969,
+          "peakHeapDeltaBytes": 26993112,
+          "peakRssDeltaBytes": 1638400
+        },
+        {
+          "firstEditMs": 266.7872999999963,
+          "repeatEditMs": 266.7872999999963,
+          "peakHeapDeltaBytes": 26345696,
+          "peakRssDeltaBytes": 864256
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "host": "desktop",
+  "profile": "desktop",
+  "source": "isolated DSH profile; no daily profile/user data used",
+  "packageArchive": "dsh-lint-loop-0.7.0-rc.0.tgz",
+  "packageSha256": "acdc28228ca6af5797e4dff4ed73a2e5cd76b4479712627d4632664730e03ae9",
+  "operations": [
+    {
+      "operation": "install initial",
+      "result": "success",
+      "proof": "installed version 0.7.0-rc.0; dist/index.js SHA256 96d57d4c3f4cb053c41aac9fd7d9f657cbaf27466922792a38e18142ec837d5e"
+    },
+    {
+      "operation": "load in actual host",
+      "result": "success",
+      "proof": "acceptance.json and host.log; AgentLoop passed"
+    },
+    {
+      "operation": "uninstall via host-owned official DSH CLI",
+      "result": "success",
+      "proof": "package directory absent after remove"
+    },
+    {
+      "operation": "reinstall exact tarball via host-owned official DSH CLI",
+      "result": "success",
+      "proof": "installed version and dist/index.js hash match package identity"
+    },
+    {
+      "operation": "reload after reinstall",
+      "result": "success",
+      "proof": "acceptance.json; same candidate run and disposed"
+    }
+  ],
+  "cli": "official Desktop-bundled DSH CLI 0.2.1-rc.2 (Electron-managed profile)",
+  "scope": "All DSH_HOME and Electron user-data paths under .cache/host-final8"
+}

@@ -1,0 +1,18 @@
+{
+  "sourceIdentityRestored": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+  "finalIdentity": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+  "historicalDebt": 3,
+  "agentDisposed": true,
+  "modelInput": "deterministic scripted adapter; actual AgentLoop and tools",
+  "completion": {
+    "type": "turn/end",
+    "seq": 62,
+    "time": 1792411806063,
+    "data": {
+      "turn": 1,
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  }
+}

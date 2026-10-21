@@ -186,7 +186,7 @@ export function clearBaseline(owner: BaselineOwner | undefined, absPaths?: reado
   const key = ownerKey(owner)
   const state = states.get(key)
   if (!state) {
-    if (!absPaths) pendingMutations.delete(key)
+    if (!absPaths) { pendingMutations.delete(key); editedThisTurn.delete(key) }
     return
   }
   if (!absPaths) {

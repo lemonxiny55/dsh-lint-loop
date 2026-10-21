@@ -1,0 +1,674 @@
+{
+  "runtime": "actual DSH host shell tool",
+  "node": "v24.19.0",
+  "cases": [
+    {
+      "outcome": "success",
+      "shell": "pwsh",
+      "isError": false,
+      "value": {
+        "cwd": "<local-path-redacted>",
+        "kind": "foreground",
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "aborted": false,
+        "timeoutMs": 30000,
+        "stdout": {
+          "text": "",
+          "truncated": false
+        },
+        "stderr": {
+          "text": "",
+          "truncated": false
+        },
+        "sandbox": {
+          "mode": "workspace-write",
+          "denied": false,
+          "enforcement": "partial"
+        }
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "verifiedAt": "2026-10-20T06:47:28.745Z",
+        "evidenceCoverage": {
+          "digest": "d3405c491a7f175d06507cea985def8943747f4e56927e3f2208a4aa08b793d3",
+          "status": "incomplete",
+          "scope": "bounded-workspace-source-tree",
+          "exclusions": [
+            ".git",
+            "node_modules",
+            "dist",
+            "build",
+            "coverage",
+            ".cache",
+            ".next",
+            ".turbo"
+          ],
+          "reasons": [
+            "general execution has no confined filesystem mutation contract",
+            "observed changes have uncertain authorship"
+          ],
+          "changes": [
+            {
+              "file": "shell-success.js",
+              "after": "33206:d07b4e17a64f620f419706607c3f54e13199011630074b72252b1433a03ca384",
+              "operation": "added",
+              "tool": "pwsh",
+              "outcome": "success",
+              "attribution": "unattributed"
+            }
+          ],
+          "checkpoints": 3,
+          "bytesHashed": 1899,
+          "elapsedMs": 12
+        },
+        "mode": "balanced",
+        "root": "<local-path-redacted>",
+        "changedFiles": [
+          "shell-success.js"
+        ],
+        "newlyIntroducedRegressions": [],
+        "unattributedFindings": [],
+        "autoFixed": [],
+        "agentFixed": [],
+        "ignoredHistoricalDebt": [
+          {
+            "check": "typecheck:.",
+            "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          },
+          {
+            "check": "tests:.",
+            "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          }
+        ],
+        "lint": "incomplete",
+        "typecheck": "clean",
+        "tests": "clean",
+        "selection": {
+          "strategy": "package-fallback",
+          "files": [
+            "tests/a.test.js",
+            "tests/b.test.js"
+          ],
+          "reasons": [
+            "no provable test dependency; running changed packages"
+          ],
+          "complete": true
+        },
+        "checksExecuted": [
+          {
+            "id": "lint:shell-success.js",
+            "kind": "lint",
+            "scope": "shell-success.js",
+            "command": "<local-path-redacted>",
+            "args": [
+              "--no-warn-ignored",
+              "-f",
+              "json",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [],
+            "executed": [],
+            "elapsedMs": 253,
+            "invocations": [
+              {
+                "command": "<local-path-redacted>",
+                "args": [
+                  "--no-warn-ignored",
+                  "-f",
+                  "json",
+                  "<local-path-redacted>"
+                ],
+                "cwd": "<local-path-redacted>"
+              }
+            ]
+          },
+          {
+            "id": "typecheck:.",
+            "kind": "typecheck",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "--noEmit",
+              "--pretty",
+              "false",
+              "--incremental",
+              "false",
+              "-p",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [
+              "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+            ],
+            "executed": [],
+            "elapsedMs": 329,
+            "skipped": []
+          },
+          {
+            "id": "tests:.",
+            "kind": "tests",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "run",
+              "--reporter=json"
+            ],
+            "status": "complete",
+            "issues": [
+              "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+            ],
+            "executed": [
+              "tests/a.test.js|a",
+              "tests/a.test.js|historical",
+              "tests/b.test.js|unrelated"
+            ],
+            "elapsedMs": 550,
+            "skipped": []
+          }
+        ],
+        "baselineChecks": [
+          {
+            "id": "typecheck:.",
+            "kind": "typecheck",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "--noEmit",
+              "--pretty",
+              "false",
+              "--incremental",
+              "false",
+              "-p",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [
+              "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+            ],
+            "executed": [],
+            "elapsedMs": 340,
+            "skipped": []
+          },
+          {
+            "id": "tests:.",
+            "kind": "tests",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "run",
+              "--reporter=json"
+            ],
+            "status": "complete",
+            "issues": [
+              "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+            ],
+            "executed": [
+              "tests/a.test.js|a",
+              "tests/a.test.js|historical",
+              "tests/b.test.js|unrelated"
+            ],
+            "elapsedMs": 547,
+            "skipped": []
+          }
+        ],
+        "repairRounds": 0,
+        "continuationRounds": 0,
+        "elapsedMs": 1148,
+        "finalVerdict": "incomplete",
+        "reasons": [
+          "lint baseline unavailable: shell-success.js",
+          "general execution has no confined filesystem mutation contract",
+          "observed changes have uncertain authorship"
+        ]
+      }
+    },
+    {
+      "outcome": "failure",
+      "shell": "pwsh",
+      "isError": false,
+      "value": {
+        "cwd": "<local-path-redacted>",
+        "kind": "foreground",
+        "exitCode": 7,
+        "signal": null,
+        "timedOut": false,
+        "aborted": false,
+        "timeoutMs": 30000,
+        "stdout": {
+          "text": "",
+          "truncated": false
+        },
+        "stderr": {
+          "text": "",
+          "truncated": false
+        },
+        "sandbox": {
+          "mode": "workspace-write",
+          "denied": false,
+          "enforcement": "partial"
+        }
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "verifiedAt": "2026-10-20T06:47:31.480Z",
+        "evidenceCoverage": {
+          "digest": "dc5de436c19589b7e50387f3bb50564d580da50045ce3182e060a5108f5f04ce",
+          "status": "incomplete",
+          "scope": "bounded-workspace-source-tree",
+          "exclusions": [
+            ".git",
+            "node_modules",
+            "dist",
+            "build",
+            "coverage",
+            ".cache",
+            ".next",
+            ".turbo"
+          ],
+          "reasons": [
+            "general execution has no confined filesystem mutation contract",
+            "observed changes have uncertain authorship"
+          ],
+          "changes": [
+            {
+              "file": "shell-failure.js",
+              "after": "33206:d07b4e17a64f620f419706607c3f54e13199011630074b72252b1433a03ca384",
+              "operation": "added",
+              "tool": "pwsh",
+              "outcome": "failure",
+              "attribution": "unattributed"
+            }
+          ],
+          "checkpoints": 3,
+          "bytesHashed": 1998,
+          "elapsedMs": 14
+        },
+        "mode": "balanced",
+        "root": "<local-path-redacted>",
+        "changedFiles": [
+          "shell-failure.js"
+        ],
+        "newlyIntroducedRegressions": [],
+        "unattributedFindings": [],
+        "autoFixed": [],
+        "agentFixed": [],
+        "ignoredHistoricalDebt": [
+          {
+            "check": "typecheck:.",
+            "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          },
+          {
+            "check": "tests:.",
+            "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          }
+        ],
+        "lint": "incomplete",
+        "typecheck": "clean",
+        "tests": "clean",
+        "selection": {
+          "strategy": "package-fallback",
+          "files": [
+            "tests/a.test.js",
+            "tests/b.test.js"
+          ],
+          "reasons": [
+            "no provable test dependency; running changed packages"
+          ],
+          "complete": true
+        },
+        "checksExecuted": [
+          {
+            "id": "lint:shell-failure.js",
+            "kind": "lint",
+            "scope": "shell-failure.js",
+            "command": "<local-path-redacted>",
+            "args": [
+              "--no-warn-ignored",
+              "-f",
+              "json",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [],
+            "executed": [],
+            "elapsedMs": 260,
+            "invocations": [
+              {
+                "command": "<local-path-redacted>",
+                "args": [
+                  "--no-warn-ignored",
+                  "-f",
+                  "json",
+                  "<local-path-redacted>"
+                ],
+                "cwd": "<local-path-redacted>"
+              }
+            ]
+          },
+          {
+            "id": "typecheck:.",
+            "kind": "typecheck",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "--noEmit",
+              "--pretty",
+              "false",
+              "--incremental",
+              "false",
+              "-p",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [
+              "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+            ],
+            "executed": [],
+            "elapsedMs": 356,
+            "skipped": []
+          },
+          {
+            "id": "tests:.",
+            "kind": "tests",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "run",
+              "--reporter=json"
+            ],
+            "status": "complete",
+            "issues": [
+              "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+            ],
+            "executed": [
+              "tests/a.test.js|a",
+              "tests/a.test.js|historical",
+              "tests/b.test.js|unrelated"
+            ],
+            "elapsedMs": 562,
+            "skipped": []
+          }
+        ],
+        "baselineChecks": [
+          {
+            "id": "typecheck:.",
+            "kind": "typecheck",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "--noEmit",
+              "--pretty",
+              "false",
+              "--incremental",
+              "false",
+              "-p",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [
+              "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+            ],
+            "executed": [],
+            "elapsedMs": 328,
+            "skipped": []
+          },
+          {
+            "id": "tests:.",
+            "kind": "tests",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "run",
+              "--reporter=json"
+            ],
+            "status": "complete",
+            "issues": [
+              "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+            ],
+            "executed": [
+              "tests/a.test.js|a",
+              "tests/a.test.js|historical",
+              "tests/b.test.js|unrelated"
+            ],
+            "elapsedMs": 595,
+            "skipped": []
+          }
+        ],
+        "repairRounds": 0,
+        "continuationRounds": 0,
+        "elapsedMs": 1198,
+        "finalVerdict": "incomplete",
+        "reasons": [
+          "lint baseline unavailable: shell-failure.js",
+          "general execution has no confined filesystem mutation contract",
+          "observed changes have uncertain authorship"
+        ]
+      }
+    },
+    {
+      "outcome": "cancelled",
+      "shell": "pwsh",
+      "isError": true,
+      "error": {
+        "message": "tool call aborted",
+        "info": {
+          "name": "AbortError",
+          "code": "ABORTED"
+        }
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "verifiedAt": "2026-10-20T06:47:34.200Z",
+        "evidenceCoverage": {
+          "digest": "2e35ea4f990a7300fe0bc75a701d7e8a089eb6e1363bf871718a6af3196b0d56",
+          "status": "incomplete",
+          "scope": "bounded-workspace-source-tree",
+          "exclusions": [
+            ".git",
+            "node_modules",
+            "dist",
+            "build",
+            "coverage",
+            ".cache",
+            ".next",
+            ".turbo"
+          ],
+          "reasons": [
+            "general execution has no confined filesystem mutation contract",
+            "observed changes have uncertain authorship",
+            "authoritative tool result failed after filesystem effects"
+          ],
+          "changes": [
+            {
+              "file": "shell-cancelled.js",
+              "after": "33206:d07b4e17a64f620f419706607c3f54e13199011630074b72252b1433a03ca384",
+              "operation": "added",
+              "tool": "pwsh",
+              "outcome": "cancelled",
+              "attribution": "unattributed"
+            }
+          ],
+          "checkpoints": 3,
+          "bytesHashed": 2097,
+          "elapsedMs": 16
+        },
+        "mode": "balanced",
+        "root": "<local-path-redacted>",
+        "changedFiles": [
+          "shell-cancelled.js"
+        ],
+        "newlyIntroducedRegressions": [],
+        "unattributedFindings": [],
+        "autoFixed": [],
+        "agentFixed": [],
+        "ignoredHistoricalDebt": [
+          {
+            "check": "typecheck:.",
+            "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          },
+          {
+            "check": "tests:.",
+            "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          }
+        ],
+        "lint": "incomplete",
+        "typecheck": "clean",
+        "tests": "clean",
+        "selection": {
+          "strategy": "package-fallback",
+          "files": [
+            "tests/a.test.js",
+            "tests/b.test.js"
+          ],
+          "reasons": [
+            "no provable test dependency; running changed packages"
+          ],
+          "complete": true
+        },
+        "checksExecuted": [
+          {
+            "id": "lint:shell-cancelled.js",
+            "kind": "lint",
+            "scope": "shell-cancelled.js",
+            "command": "<local-path-redacted>",
+            "args": [
+              "--no-warn-ignored",
+              "-f",
+              "json",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [],
+            "executed": [],
+            "elapsedMs": 261,
+            "invocations": [
+              {
+                "command": "<local-path-redacted>",
+                "args": [
+                  "--no-warn-ignored",
+                  "-f",
+                  "json",
+                  "<local-path-redacted>"
+                ],
+                "cwd": "<local-path-redacted>"
+              }
+            ]
+          },
+          {
+            "id": "typecheck:.",
+            "kind": "typecheck",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "--noEmit",
+              "--pretty",
+              "false",
+              "--incremental",
+              "false",
+              "-p",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [
+              "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+            ],
+            "executed": [],
+            "elapsedMs": 353,
+            "skipped": []
+          },
+          {
+            "id": "tests:.",
+            "kind": "tests",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "run",
+              "--reporter=json"
+            ],
+            "status": "complete",
+            "issues": [
+              "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+            ],
+            "executed": [
+              "tests/a.test.js|a",
+              "tests/a.test.js|historical",
+              "tests/b.test.js|unrelated"
+            ],
+            "elapsedMs": 571,
+            "skipped": []
+          }
+        ],
+        "baselineChecks": [
+          {
+            "id": "typecheck:.",
+            "kind": "typecheck",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "--noEmit",
+              "--pretty",
+              "false",
+              "--incremental",
+              "false",
+              "-p",
+              "<local-path-redacted>"
+            ],
+            "status": "complete",
+            "issues": [
+              "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+            ],
+            "executed": [],
+            "elapsedMs": 342,
+            "skipped": []
+          },
+          {
+            "id": "tests:.",
+            "kind": "tests",
+            "scope": ".",
+            "command": "<local-path-redacted>",
+            "args": [
+              "<local-path-redacted>",
+              "run",
+              "--reporter=json"
+            ],
+            "status": "complete",
+            "issues": [
+              "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+            ],
+            "executed": [
+              "tests/a.test.js|a",
+              "tests/a.test.js|historical",
+              "tests/b.test.js|unrelated"
+            ],
+            "elapsedMs": 545,
+            "skipped": []
+          }
+        ],
+        "repairRounds": 0,
+        "continuationRounds": 0,
+        "elapsedMs": 1204,
+        "finalVerdict": "incomplete",
+        "reasons": [
+          "lint baseline unavailable: shell-cancelled.js",
+          "general execution has no confined filesystem mutation contract",
+          "observed changes have uncertain authorship",
+          "authoritative tool result failed after filesystem effects"
+        ]
+      }
+    }
+  ]
+}

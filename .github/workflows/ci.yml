@@ -8,7 +8,9 @@ on:
 jobs:
   verify:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         node-version: [22, 24]
         os: [ubuntu-latest, windows-latest]
@@ -26,3 +28,20 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: node scripts/compat-smoke.mjs
+      - name: Pin auxiliary installer (npm 10 crashes on the demo dependency graph)
+        run: npm install --global npm@11.17.0 --no-audit --no-fund
+      - name: Install exact published DSH and real demo toolchain
+        run: |
+          node scripts/prepare-demo-dependencies.mjs
+          npm install --prefix .cache/dsh021 @deepseek-ai/dsh@0.2.1-rc.2 @deepseek-ai/dsh-tools@0.2.1-rc.2 @deepseek-ai/cordis@4.0.5 --no-audit --no-fund
+          npm install --prefix .cache/demo-v070 eslint@10.12.0 typescript@6.0.3 vitest@4.1.11 --no-audit --no-fund
+      - name: Latest published DSH API
+        run: node scripts/check-dsh-api.mjs
+      - name: Real DSH AgentLoop with real lint, compiler and tests
+        run: node scripts/dsh-runtime-demo.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence-${{ matrix.os }}-node${{ matrix.node-version }}
+          path: .cache/runtime-demo/results.json
+          include-hidden-files: true

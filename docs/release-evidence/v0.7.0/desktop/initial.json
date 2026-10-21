@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-19T12:10:48.037Z",
+  "evidenceCoverage": {
+    "digest": "eabf5c66fc853fa04aedb93bb45944d6d90793c993e637ef9b267fb921433581",
+    "status": "complete",
+    "scope": "bounded-workspace-source-tree",
+    "exclusions": [
+      ".git",
+      "node_modules",
+      "dist",
+      "build",
+      "coverage",
+      ".cache",
+      ".next",
+      ".turbo"
+    ],
+    "reasons": [],
+    "changes": [
+      {
+        "file": "src/a.js",
+        "before": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+        "after": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+        "operation": "modified",
+        "tool": "edit",
+        "outcome": "success",
+        "attribution": "tool-target"
+      }
+    ],
+    "checkpoints": 5,
+    "bytesHashed": 3061,
+    "elapsedMs": 19
+  },
+  "mode": "balanced",
+  "root": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc",
+  "changedFiles": [
+    "src/a.js"
+  ],
+  "newlyIntroducedRegressions": [
+    {
+      "check": "lint",
+      "identity": "src/a.js|eslint|error|semi|missing semicolon."
+    },
+    {
+      "check": "typecheck:.",
+      "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+    }
+  ],
+  "unattributedFindings": [],
+  "autoFixed": [],
+  "agentFixed": [],
+  "ignoredHistoricalDebt": [
+    {
+      "check": "lint",
+      "identity": "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+    },
+    {
+      "check": "typecheck:.",
+      "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+    },
+    {
+      "check": "tests:.",
+      "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+    }
+  ],
+  "lint": "regression",
+  "typecheck": "regression",
+  "tests": "regression",
+  "selection": {
+    "strategy": "dependency",
+    "files": [
+      "tests/a.test.js"
+    ],
+    "reasons": [
+      "transitive reverse imports, including changed tests"
+    ],
+    "complete": true
+  },
+  "checksExecuted": [
+    {
+      "id": "lint:src/a.js",
+      "kind": "lint",
+      "scope": "src/a.js",
+      "command": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\.bin\\eslint.cmd",
+      "args": [
+        "--no-warn-ignored",
+        "-f",
+        "json",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\src\\a.js"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.js|eslint|error|semi|missing semicolon.",
+        "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+      ],
+      "executed": [],
+      "elapsedMs": 249,
+      "invocations": [
+        {
+          "command": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\.bin\\eslint.cmd",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\src\\a.js"
+          ],
+          "cwd": "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc"
+        }
+      ]
+    },
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f",
+        "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+      ],
+      "executed": [],
+      "elapsedMs": 275,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\tests\\a.test.js"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality",
+        "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.js|a",
+        "tests/a.test.js|historical"
+      ],
+      "elapsedMs": 470,
+      "skipped": []
+    }
+  ],
+  "baselineChecks": [
+    {
+      "id": "typecheck:.",
+      "kind": "typecheck",
+      "scope": ".",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\typescript\\bin\\tsc",
+        "--noEmit",
+        "--pretty",
+        "false",
+        "--incremental",
+        "false",
+        "-p",
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\tsconfig.json"
+      ],
+      "status": "complete",
+      "issues": [
+        "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+      ],
+      "executed": [],
+      "elapsedMs": 283,
+      "skipped": []
+    },
+    {
+      "id": "tests:.",
+      "kind": "tests",
+      "scope": ".",
+      "command": "D:\\ChatGPTProjects\\dsh-lint-loop\\.cache\\desktop021\\DeepSeek Harness.exe",
+      "args": [
+        "C:\\Users\\18439\\AppData\\Local\\Temp\\dsh-evidence-demo-ogWEuc\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--reporter=json"
+      ],
+      "status": "complete",
+      "issues": [
+        "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+      ],
+      "executed": [
+        "tests/a.test.js|a",
+        "tests/a.test.js|historical",
+        "tests/b.test.js|unrelated"
+      ],
+      "elapsedMs": 513,
+      "skipped": []
+    }
+  ],
+  "repairRounds": 0,
+  "continuationRounds": 0,
+  "elapsedMs": 1009,
+  "finalVerdict": "regression",
+  "reasons": []
+}

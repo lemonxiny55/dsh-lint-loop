@@ -1,6 +1,6 @@
 {
   "name": "dsh-lint-loop",
-  "version": "0.6.1-rc.0",
+  "version": "0.7.0",
   "description": "The change-aware quality loop for DeepSeek Harness. Fix what the agent broke. Ignore what was already broken. Prove the change is clean.",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,0 +1,21 @@
+{
+  "runId": 39259992219,
+  "runUrl": "https://github.com/lemonxiny55/dsh-lint-loop/actions/runs/39259992219",
+  "sourceCommit": "8ab76d3c00c97ef6501fcd4c5e2725d74a60e219",
+  "conclusion": "success",
+  "matrix": [
+    { "os": "ubuntu-latest", "node": 22, "conclusion": "success" },
+    { "os": "ubuntu-latest", "node": 24, "conclusion": "success" },
+    { "os": "windows-latest", "node": 22, "conclusion": "success" },
+    { "os": "windows-latest", "node": 24, "conclusion": "success" }
+  ],
+  "stepsPerJob": [
+    "frozen dependency install",
+    "typecheck",
+    "test suite (197 tests)",
+    "build",
+    "compatibility smoke",
+    "exact published DSH API check",
+    "real DSH AgentLoop integration demo"
+  ]
+}

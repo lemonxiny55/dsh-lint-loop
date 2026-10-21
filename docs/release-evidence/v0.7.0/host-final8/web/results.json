@@ -1,0 +1,1408 @@
+{
+  "runtime": "DSH 0.2.1-rc.2",
+  "node": "v24.19.0",
+  "modelInput": "deterministic scripted adapter; actual AgentLoop and tools",
+  "root": "<local-path-redacted>",
+  "outcomes": [
+    {
+      "tool": "read",
+      "isError": false
+    },
+    {
+      "tool": "edit",
+      "isError": false
+    },
+    {
+      "tool": "quality_verify",
+      "isError": false
+    },
+    {
+      "tool": "lint_repair",
+      "isError": false
+    },
+    {
+      "tool": "quality_verify",
+      "isError": false
+    },
+    {
+      "tool": "read",
+      "isError": false
+    },
+    {
+      "tool": "edit",
+      "isError": false
+    },
+    {
+      "tool": "quality_verify",
+      "isError": false
+    },
+    {
+      "tool": "quality_receipt",
+      "isError": false
+    }
+  ],
+  "receipts": [
+    {
+      "schemaVersion": 1,
+      "verifiedAt": "2026-10-20T06:47:21.058Z",
+      "evidenceCoverage": {
+        "digest": "eabf5c66fc853fa04aedb93bb45944d6d90793c993e637ef9b267fb921433581",
+        "status": "complete",
+        "scope": "bounded-workspace-source-tree",
+        "exclusions": [
+          ".git",
+          "node_modules",
+          "dist",
+          "build",
+          "coverage",
+          ".cache",
+          ".next",
+          ".turbo"
+        ],
+        "reasons": [],
+        "changes": [
+          {
+            "file": "src/a.js",
+            "before": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+            "after": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          }
+        ],
+        "checkpoints": 5,
+        "bytesHashed": 3061,
+        "elapsedMs": 20
+      },
+      "mode": "balanced",
+      "root": "<local-path-redacted>",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "newlyIntroducedRegressions": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|semi|missing semicolon."
+        },
+        {
+          "check": "typecheck:.",
+          "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+        }
+      ],
+      "unattributedFindings": [],
+      "autoFixed": [],
+      "agentFixed": [],
+      "ignoredHistoricalDebt": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+        },
+        {
+          "check": "typecheck:.",
+          "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+        }
+      ],
+      "lint": "regression",
+      "typecheck": "regression",
+      "tests": "regression",
+      "selection": {
+        "strategy": "dependency",
+        "files": [
+          "tests/a.test.js"
+        ],
+        "reasons": [
+          "transitive reverse imports, including changed tests"
+        ],
+        "complete": true
+      },
+      "checksExecuted": [
+        {
+          "id": "lint:src/a.js",
+          "kind": "lint",
+          "scope": "src/a.js",
+          "command": "<local-path-redacted>",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/a.js|eslint|error|semi|missing semicolon.",
+            "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+          ],
+          "executed": [],
+          "elapsedMs": 251,
+          "invocations": [
+            {
+              "command": "<local-path-redacted>",
+              "args": [
+                "--no-warn-ignored",
+                "-f",
+                "json",
+                "<local-path-redacted>"
+              ],
+              "cwd": "<local-path-redacted>"
+            }
+          ]
+        },
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f",
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 331,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality",
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical"
+          ],
+          "elapsedMs": 550,
+          "skipped": []
+        }
+      ],
+      "baselineChecks": [
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 368,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical",
+            "tests/b.test.js|unrelated"
+          ],
+          "elapsedMs": 699,
+          "skipped": []
+        }
+      ],
+      "repairRounds": 0,
+      "continuationRounds": 0,
+      "elapsedMs": 1151,
+      "finalVerdict": "regression",
+      "reasons": []
+    },
+    {
+      "schemaVersion": 1,
+      "verifiedAt": "2026-10-20T06:47:23.564Z",
+      "evidenceCoverage": {
+        "digest": "11cda985e1a556da026e87a1933845162856e9d1cac5a99b62983ae8d538e28c",
+        "status": "complete",
+        "scope": "bounded-workspace-source-tree",
+        "exclusions": [
+          ".git",
+          "node_modules",
+          "dist",
+          "build",
+          "coverage",
+          ".cache",
+          ".next",
+          ".turbo"
+        ],
+        "reasons": [],
+        "changes": [
+          {
+            "file": "src/a.js",
+            "before": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+            "after": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          },
+          {
+            "file": "src/a.js",
+            "before": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "after": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          }
+        ],
+        "checkpoints": 9,
+        "bytesHashed": 5519,
+        "elapsedMs": 35
+      },
+      "mode": "balanced",
+      "root": "<local-path-redacted>",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "newlyIntroducedRegressions": [
+        {
+          "check": "typecheck:.",
+          "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+        }
+      ],
+      "unattributedFindings": [],
+      "autoFixed": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|semi|missing semicolon."
+        }
+      ],
+      "agentFixed": [],
+      "ignoredHistoricalDebt": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+        },
+        {
+          "check": "typecheck:.",
+          "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+        }
+      ],
+      "lint": "clean",
+      "typecheck": "regression",
+      "tests": "regression",
+      "selection": {
+        "strategy": "dependency",
+        "files": [
+          "tests/a.test.js"
+        ],
+        "reasons": [
+          "transitive reverse imports, including changed tests"
+        ],
+        "complete": true
+      },
+      "checksExecuted": [
+        {
+          "id": "lint:src/a.js",
+          "kind": "lint",
+          "scope": "src/a.js",
+          "command": "<local-path-redacted>",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+          ],
+          "executed": [],
+          "elapsedMs": 248,
+          "invocations": [
+            {
+              "command": "<local-path-redacted>",
+              "args": [
+                "--no-warn-ignored",
+                "-f",
+                "json",
+                "<local-path-redacted>"
+              ],
+              "cwd": "<local-path-redacted>"
+            }
+          ]
+        },
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f",
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 321,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality",
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical"
+          ],
+          "elapsedMs": 547,
+          "skipped": []
+        }
+      ],
+      "baselineChecks": [
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 368,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical",
+            "tests/b.test.js|unrelated"
+          ],
+          "elapsedMs": 699,
+          "skipped": []
+        }
+      ],
+      "repairRounds": 1,
+      "continuationRounds": 0,
+      "elapsedMs": 1131,
+      "finalVerdict": "regression",
+      "reasons": []
+    },
+    {
+      "schemaVersion": 1,
+      "verifiedAt": "2026-10-20T06:47:24.835Z",
+      "evidenceCoverage": {
+        "digest": "f3842219c3c52c58325a35891fd1ef2333d3333808246b0e34a6d407a538f8c1",
+        "status": "complete",
+        "scope": "bounded-workspace-source-tree",
+        "exclusions": [
+          ".git",
+          "node_modules",
+          "dist",
+          "build",
+          "coverage",
+          ".cache",
+          ".next",
+          ".turbo"
+        ],
+        "reasons": [],
+        "changes": [
+          {
+            "file": "src/a.js",
+            "before": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+            "after": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          },
+          {
+            "file": "src/a.js",
+            "before": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "after": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          },
+          {
+            "file": "src/a.js",
+            "before": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+            "after": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          }
+        ],
+        "checkpoints": 14,
+        "bytesHashed": 8586,
+        "elapsedMs": 61
+      },
+      "mode": "balanced",
+      "root": "<local-path-redacted>",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "newlyIntroducedRegressions": [],
+      "unattributedFindings": [],
+      "autoFixed": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|semi|missing semicolon."
+        }
+      ],
+      "agentFixed": [
+        {
+          "check": "typecheck:.",
+          "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+        }
+      ],
+      "ignoredHistoricalDebt": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+        },
+        {
+          "check": "typecheck:.",
+          "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+        }
+      ],
+      "lint": "clean",
+      "typecheck": "clean",
+      "tests": "clean",
+      "selection": {
+        "strategy": "dependency",
+        "files": [
+          "tests/a.test.js"
+        ],
+        "reasons": [
+          "transitive reverse imports, including changed tests"
+        ],
+        "complete": true
+      },
+      "checksExecuted": [
+        {
+          "id": "lint:src/a.js",
+          "kind": "lint",
+          "scope": "src/a.js",
+          "command": "<local-path-redacted>",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+          ],
+          "executed": [],
+          "elapsedMs": 246,
+          "invocations": [
+            {
+              "command": "<local-path-redacted>",
+              "args": [
+                "--no-warn-ignored",
+                "-f",
+                "json",
+                "<local-path-redacted>"
+              ],
+              "cwd": "<local-path-redacted>"
+            }
+          ]
+        },
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 342,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical"
+          ],
+          "elapsedMs": 547,
+          "skipped": []
+        }
+      ],
+      "baselineChecks": [
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 368,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical",
+            "tests/b.test.js|unrelated"
+          ],
+          "elapsedMs": 699,
+          "skipped": []
+        }
+      ],
+      "repairRounds": 1,
+      "continuationRounds": 0,
+      "elapsedMs": 1152,
+      "finalVerdict": "clean",
+      "reasons": []
+    },
+    {
+      "schemaVersion": 1,
+      "verifiedAt": "2026-10-20T06:47:24.835Z",
+      "evidenceCoverage": {
+        "digest": "f3842219c3c52c58325a35891fd1ef2333d3333808246b0e34a6d407a538f8c1",
+        "status": "complete",
+        "scope": "bounded-workspace-source-tree",
+        "exclusions": [
+          ".git",
+          "node_modules",
+          "dist",
+          "build",
+          "coverage",
+          ".cache",
+          ".next",
+          ".turbo"
+        ],
+        "reasons": [],
+        "changes": [
+          {
+            "file": "src/a.js",
+            "before": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+            "after": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          },
+          {
+            "file": "src/a.js",
+            "before": "33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed",
+            "after": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          },
+          {
+            "file": "src/a.js",
+            "before": "33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b",
+            "after": "33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07",
+            "operation": "modified",
+            "tool": "edit",
+            "outcome": "success",
+            "attribution": "tool-target"
+          }
+        ],
+        "checkpoints": 14,
+        "bytesHashed": 8586,
+        "elapsedMs": 61
+      },
+      "mode": "balanced",
+      "root": "<local-path-redacted>",
+      "changedFiles": [
+        "src/a.js"
+      ],
+      "newlyIntroducedRegressions": [],
+      "unattributedFindings": [],
+      "autoFixed": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|semi|missing semicolon."
+        }
+      ],
+      "agentFixed": [
+        {
+          "check": "typecheck:.",
+          "identity": "src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality"
+        }
+      ],
+      "ignoredHistoricalDebt": [
+        {
+          "check": "lint",
+          "identity": "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+        },
+        {
+          "check": "typecheck:.",
+          "identity": "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+        },
+        {
+          "check": "tests:.",
+          "identity": "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+        }
+      ],
+      "lint": "clean",
+      "typecheck": "clean",
+      "tests": "clean",
+      "selection": {
+        "strategy": "dependency",
+        "files": [
+          "tests/a.test.js"
+        ],
+        "reasons": [
+          "transitive reverse imports, including changed tests"
+        ],
+        "complete": true
+      },
+      "checksExecuted": [
+        {
+          "id": "lint:src/a.js",
+          "kind": "lint",
+          "scope": "src/a.js",
+          "command": "<local-path-redacted>",
+          "args": [
+            "--no-warn-ignored",
+            "-f",
+            "json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used."
+          ],
+          "executed": [],
+          "elapsedMs": 246,
+          "invocations": [
+            {
+              "command": "<local-path-redacted>",
+              "args": [
+                "--no-warn-ignored",
+                "-f",
+                "json",
+                "<local-path-redacted>"
+              ],
+              "cwd": "<local-path-redacted>"
+            }
+          ]
+        },
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 342,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical"
+          ],
+          "elapsedMs": 547,
+          "skipped": []
+        }
+      ],
+      "baselineChecks": [
+        {
+          "id": "typecheck:.",
+          "kind": "typecheck",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "--noEmit",
+            "--pretty",
+            "false",
+            "--incremental",
+            "false",
+            "-p",
+            "<local-path-redacted>"
+          ],
+          "status": "complete",
+          "issues": [
+            "src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171"
+          ],
+          "executed": [],
+          "elapsedMs": 368,
+          "skipped": []
+        },
+        {
+          "id": "tests:.",
+          "kind": "tests",
+          "scope": ".",
+          "command": "<local-path-redacted>",
+          "args": [
+            "<local-path-redacted>",
+            "run",
+            "--reporter=json"
+          ],
+          "status": "complete",
+          "issues": [
+            "tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality"
+          ],
+          "executed": [
+            "tests/a.test.js|a",
+            "tests/a.test.js|historical",
+            "tests/b.test.js|unrelated"
+          ],
+          "elapsedMs": 699,
+          "skipped": []
+        }
+      ],
+      "repairRounds": 1,
+      "continuationRounds": 0,
+      "elapsedMs": 1152,
+      "finalVerdict": "clean",
+      "reasons": []
+    }
+  ],
+  "completion": {
+    "type": "turn/end",
+    "seq": 62,
+    "time": 1792478847187,
+    "data": {
+      "turn": 1,
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  },
+  "events": [
+    {
+      "type": "turn/start",
+      "seq": 4,
+      "time": 1792478839272,
+      "data": {
+        "turn": 1
+      }
+    },
+    {
+      "type": "tool/call",
+      "seq": 16,
+      "time": 1792478839377,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "evidence-1",
+        "name": "read",
+        "arguments": "{\"file_path\":\"src/a.js\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 17,
+      "time": 1792478840568,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-1"
+          },
+          "toolCallId": "evidence-1",
+          "content": [
+            {
+              "type": "text",
+              "text": "<path><local-path-redacted></path>\n<type>file</type>\n<content>\n1: /** @type {number} */\n2: export const a = 1;\n3: const old = 1;\n\n(End of file - total 3 lines)\n</content>"
+            }
+          ],
+          "isError": false,
+          "id": "344721c0-7699-474f-ad15-66df571e67bd"
+        },
+        "meta": {
+          "path": "<local-path-redacted>",
+          "offset": 1,
+          "lines": [
+            {
+              "number": 1,
+              "text": "/** @type {number} */"
+            },
+            {
+              "number": 2,
+              "text": "export const a = 1;"
+            },
+            {
+              "number": 3,
+              "text": "const old = 1;"
+            }
+          ],
+          "totalLines": 3,
+          "lang": "js"
+        }
+      },
+      "sourceEventSeqs": [
+        16
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 21,
+      "time": 1792478840600,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "callId": "evidence-2",
+        "name": "edit",
+        "arguments": "{\"file_path\":\"src/a.js\",\"old_string\":\"export const a = 1;\",\"new_string\":\"export const a = \\\"new\\\"\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 22,
+      "time": 1792478841016,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-2"
+          },
+          "toolCallId": "evidence-2",
+          "content": [
+            {
+              "type": "text",
+              "text": "The file <local-path-redacted>"
+            }
+          ],
+          "isError": false,
+          "id": "0375225b-5841-4a20-a8ef-1b24498ea71e"
+        },
+        "meta": {
+          "path": "<local-path-redacted>",
+          "diffs": [
+            {
+              "path": "<local-path-redacted>",
+              "oldText": "/** @type {number} */\nexport const a = 1;\nconst old = 1;",
+              "newText": "/** @type {number} */\nexport const a = \"new\"\nconst old = 1;"
+            }
+          ]
+        }
+      },
+      "sourceEventSeqs": [
+        21
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 26,
+      "time": 1792478841050,
+      "data": {
+        "turn": 1,
+        "step": 3,
+        "callId": "evidence-3",
+        "name": "quality_verify",
+        "arguments": "{}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 27,
+      "time": 1792478842206,
+      "data": {
+        "turn": 1,
+        "step": 3,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-3"
+          },
+          "toolCallId": "evidence-3",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"schemaVersion\": 1,\n  \"verifiedAt\": \"2026-10-20T06:47:21.058Z\",\n  \"evidenceCoverage\": {\n    \"digest\": \"eabf5c66fc853fa04aedb93bb45944d6d90793c993e637ef9b267fb921433581\",\n    \"status\": \"complete\",\n    \"scope\": \"bounded-workspace-source-tree\",\n    \"exclusions\": [\n      \".git\",\n      \"node_modules\",\n      \"dist\",\n      \"build\",\n      \"coverage\",\n      \".cache\",\n      \".next\",\n      \".turbo\"\n    ],\n    \"reasons\": [],\n    \"changes\": [\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07\",\n        \"after\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      }\n    ],\n    \"checkpoints\": 5,\n    \"bytesHashed\": 3061,\n    \"elapsedMs\": 20\n  },\n  \"mode\": \"balanced\",\n  \"root\": \"<local-path-redacted>\",\n  \"changedFiles\": [\n    \"src/a.js\"\n  ],\n  \"newlyIntroducedRegressions\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|semi|missing semicolon.\"\n    },\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality\"\n    }\n  ],\n  \"unattributedFindings\": [],\n  \"autoFixed\": [],\n  \"agentFixed\": [],\n  \"ignoredHistoricalDebt\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n    },\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n    }\n  ],\n  \"lint\": \"regression\",\n  \"typecheck\": \"regression\",\n  \"tests\": \"regression\",\n  \"selection\": {\n    \"strategy\": \"dependency\",\n    \"files\": [\n      \"tests/a.test.js\"\n    ],\n    \"reasons\": [\n      \"transitive reverse imports, including changed tests\"\n    ],\n    \"complete\": true\n  },\n  \"checksExecuted\": [\n    {\n      \"id\": \"lint:src/a.js\",\n      \"kind\": \"lint\",\n      \"scope\": \"src/a.js\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"--no-warn-ignored\",\n        \"-f\",\n        \"json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/a.js|eslint|error|semi|missing semicolon.\",\n        \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 251,\n      \"invocations\": [\n        {\n          \"command\": \"<local-path-redacted>\",\n          \"args\": [\n            \"--no-warn-ignored\",\n            \"-f\",\n            \"json\",\n            \"<local-path-redacted>\"\n          ],\n          \"cwd\": \"<local-path-redacted>\"\n        }\n      ]\n    },\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f\",\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 331,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality\",\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\"\n      ],\n      \"elapsedMs\": 550,\n      \"skipped\": []\n    }\n  ],\n  \"baselineChecks\": [\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 368,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\",\n        \"tests/b.test.js|unrelated\"\n      ],\n      \"elapsedMs\": 699,\n      \"skipped\": []\n    }\n  ],\n  \"repairRounds\": 0,\n  \"continuationRounds\": 0,\n  \"elapsedMs\": 1151,\n  \"finalVerdict\": \"regression\",\n  \"reasons\": []\n}"
+            }
+          ],
+          "isError": false,
+          "id": "339612fa-4606-4d4f-8855-b5670a3ffaeb"
+        }
+      },
+      "sourceEventSeqs": [
+        26
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 31,
+      "time": 1792478842230,
+      "data": {
+        "turn": 1,
+        "step": 4,
+        "callId": "evidence-4",
+        "name": "lint_repair",
+        "arguments": "{\"scope\":\"turn\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 32,
+      "time": 1792478843531,
+      "data": {
+        "turn": 1,
+        "step": 4,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-4"
+          },
+          "toolCallId": "evidence-4",
+          "content": [
+            {
+              "type": "text",
+              "text": "# lint_repair (turn)\nregressions found: 1\nauto-fixed: 1\nremaining: 0\naffected files: src/a.js\nfixer batches: 1; rounds: 1; stopped: clean\nfixer eslint (file): changed src/a.js; touched src/a.js\nfixer errors: 0\npre-existing issues ignored: 1"
+            }
+          ],
+          "isError": false,
+          "id": "59ae30d1-0264-4f49-bb1f-a4c092adde9a"
+        }
+      },
+      "sourceEventSeqs": [
+        31
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 36,
+      "time": 1792478843557,
+      "data": {
+        "turn": 1,
+        "step": 5,
+        "callId": "evidence-5",
+        "name": "quality_verify",
+        "arguments": "{}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 37,
+      "time": 1792478844693,
+      "data": {
+        "turn": 1,
+        "step": 5,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-5"
+          },
+          "toolCallId": "evidence-5",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"schemaVersion\": 1,\n  \"verifiedAt\": \"2026-10-20T06:47:23.564Z\",\n  \"evidenceCoverage\": {\n    \"digest\": \"11cda985e1a556da026e87a1933845162856e9d1cac5a99b62983ae8d538e28c\",\n    \"status\": \"complete\",\n    \"scope\": \"bounded-workspace-source-tree\",\n    \"exclusions\": [\n      \".git\",\n      \"node_modules\",\n      \"dist\",\n      \"build\",\n      \"coverage\",\n      \".cache\",\n      \".next\",\n      \".turbo\"\n    ],\n    \"reasons\": [],\n    \"changes\": [\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07\",\n        \"after\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      },\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"after\": \"33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      }\n    ],\n    \"checkpoints\": 9,\n    \"bytesHashed\": 5519,\n    \"elapsedMs\": 35\n  },\n  \"mode\": \"balanced\",\n  \"root\": \"<local-path-redacted>\",\n  \"changedFiles\": [\n    \"src/a.js\"\n  ],\n  \"newlyIntroducedRegressions\": [\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality\"\n    }\n  ],\n  \"unattributedFindings\": [],\n  \"autoFixed\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|semi|missing semicolon.\"\n    }\n  ],\n  \"agentFixed\": [],\n  \"ignoredHistoricalDebt\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n    },\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n    }\n  ],\n  \"lint\": \"clean\",\n  \"typecheck\": \"regression\",\n  \"tests\": \"regression\",\n  \"selection\": {\n    \"strategy\": \"dependency\",\n    \"files\": [\n      \"tests/a.test.js\"\n    ],\n    \"reasons\": [\n      \"transitive reverse imports, including changed tests\"\n    ],\n    \"complete\": true\n  },\n  \"checksExecuted\": [\n    {\n      \"id\": \"lint:src/a.js\",\n      \"kind\": \"lint\",\n      \"scope\": \"src/a.js\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"--no-warn-ignored\",\n        \"-f\",\n        \"json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 248,\n      \"invocations\": [\n        {\n          \"command\": \"<local-path-redacted>\",\n          \"args\": [\n            \"--no-warn-ignored\",\n            \"-f\",\n            \"json\",\n            \"<local-path-redacted>\"\n          ],\n          \"cwd\": \"<local-path-redacted>\"\n        }\n      ]\n    },\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f\",\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 321,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality\",\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\"\n      ],\n      \"elapsedMs\": 547,\n      \"skipped\": []\n    }\n  ],\n  \"baselineChecks\": [\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 368,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\",\n        \"tests/b.test.js|unrelated\"\n      ],\n      \"elapsedMs\": 699,\n      \"skipped\": []\n    }\n  ],\n  \"repairRounds\": 1,\n  \"continuationRounds\": 0,\n  \"elapsedMs\": 1131,\n  \"finalVerdict\": \"regression\",\n  \"reasons\": []\n}"
+            }
+          ],
+          "isError": false,
+          "id": "d9f91af7-80d4-47bf-93f4-5e74e0868b08"
+        }
+      },
+      "sourceEventSeqs": [
+        36
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 41,
+      "time": 1792478844725,
+      "data": {
+        "turn": 1,
+        "step": 6,
+        "callId": "evidence-6",
+        "name": "read",
+        "arguments": "{\"file_path\":\"src/a.js\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 42,
+      "time": 1792478844747,
+      "data": {
+        "turn": 1,
+        "step": 6,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-6"
+          },
+          "toolCallId": "evidence-6",
+          "content": [
+            {
+              "type": "text",
+              "text": "<path><local-path-redacted></path>\n<type>file</type>\n<content>\n1: /** @type {number} */\n2: export const a = \"new\";\n3: const old = 1;\n\n(End of file - total 3 lines)\n</content>"
+            }
+          ],
+          "isError": false,
+          "id": "a4e0cfdf-7608-48a2-b1dc-15c068c60d28"
+        },
+        "meta": {
+          "path": "<local-path-redacted>",
+          "offset": 1,
+          "lines": [
+            {
+              "number": 1,
+              "text": "/** @type {number} */"
+            },
+            {
+              "number": 2,
+              "text": "export const a = \"new\";"
+            },
+            {
+              "number": 3,
+              "text": "const old = 1;"
+            }
+          ],
+          "totalLines": 3,
+          "lang": "js"
+        }
+      },
+      "sourceEventSeqs": [
+        41
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 46,
+      "time": 1792478844777,
+      "data": {
+        "turn": 1,
+        "step": 7,
+        "callId": "evidence-7",
+        "name": "edit",
+        "arguments": "{\"file_path\":\"src/a.js\",\"old_string\":\"export const a = \\\"new\\\";\",\"new_string\":\"export const a = 1;\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 47,
+      "time": 1792478844799,
+      "data": {
+        "turn": 1,
+        "step": 7,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-7"
+          },
+          "toolCallId": "evidence-7",
+          "content": [
+            {
+              "type": "text",
+              "text": "The file <local-path-redacted>"
+            }
+          ],
+          "isError": false,
+          "id": "925bdb15-d743-4e9d-a722-52b7dec4ebb6"
+        },
+        "meta": {
+          "path": "<local-path-redacted>",
+          "diffs": [
+            {
+              "path": "<local-path-redacted>",
+              "oldText": "/** @type {number} */\nexport const a = \"new\";\nconst old = 1;",
+              "newText": "/** @type {number} */\nexport const a = 1;\nconst old = 1;"
+            }
+          ]
+        }
+      },
+      "sourceEventSeqs": [
+        46
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 51,
+      "time": 1792478844828,
+      "data": {
+        "turn": 1,
+        "step": 8,
+        "callId": "evidence-8",
+        "name": "quality_verify",
+        "arguments": "{}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 52,
+      "time": 1792478845984,
+      "data": {
+        "turn": 1,
+        "step": 8,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-8"
+          },
+          "toolCallId": "evidence-8",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"schemaVersion\": 1,\n  \"verifiedAt\": \"2026-10-20T06:47:24.835Z\",\n  \"evidenceCoverage\": {\n    \"digest\": \"f3842219c3c52c58325a35891fd1ef2333d3333808246b0e34a6d407a538f8c1\",\n    \"status\": \"complete\",\n    \"scope\": \"bounded-workspace-source-tree\",\n    \"exclusions\": [\n      \".git\",\n      \"node_modules\",\n      \"dist\",\n      \"build\",\n      \"coverage\",\n      \".cache\",\n      \".next\",\n      \".turbo\"\n    ],\n    \"reasons\": [],\n    \"changes\": [\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07\",\n        \"after\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      },\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"after\": \"33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      },\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b\",\n        \"after\": \"33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      }\n    ],\n    \"checkpoints\": 14,\n    \"bytesHashed\": 8586,\n    \"elapsedMs\": 61\n  },\n  \"mode\": \"balanced\",\n  \"root\": \"<local-path-redacted>\",\n  \"changedFiles\": [\n    \"src/a.js\"\n  ],\n  \"newlyIntroducedRegressions\": [],\n  \"unattributedFindings\": [],\n  \"autoFixed\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|semi|missing semicolon.\"\n    }\n  ],\n  \"agentFixed\": [\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality\"\n    }\n  ],\n  \"ignoredHistoricalDebt\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n    },\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n    }\n  ],\n  \"lint\": \"clean\",\n  \"typecheck\": \"clean\",\n  \"tests\": \"clean\",\n  \"selection\": {\n    \"strategy\": \"dependency\",\n    \"files\": [\n      \"tests/a.test.js\"\n    ],\n    \"reasons\": [\n      \"transitive reverse imports, including changed tests\"\n    ],\n    \"complete\": true\n  },\n  \"checksExecuted\": [\n    {\n      \"id\": \"lint:src/a.js\",\n      \"kind\": \"lint\",\n      \"scope\": \"src/a.js\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"--no-warn-ignored\",\n        \"-f\",\n        \"json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 246,\n      \"invocations\": [\n        {\n          \"command\": \"<local-path-redacted>\",\n          \"args\": [\n            \"--no-warn-ignored\",\n            \"-f\",\n            \"json\",\n            \"<local-path-redacted>\"\n          ],\n          \"cwd\": \"<local-path-redacted>\"\n        }\n      ]\n    },\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 342,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\"\n      ],\n      \"elapsedMs\": 547,\n      \"skipped\": []\n    }\n  ],\n  \"baselineChecks\": [\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 368,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\",\n        \"tests/b.test.js|unrelated\"\n      ],\n      \"elapsedMs\": 699,\n      \"skipped\": []\n    }\n  ],\n  \"repairRounds\": 1,\n  \"continuationRounds\": 0,\n  \"elapsedMs\": 1152,\n  \"finalVerdict\": \"clean\",\n  \"reasons\": []\n}"
+            }
+          ],
+          "isError": false,
+          "id": "4573d4e0-4aa8-4e85-9aa3-f0b63622e407"
+        }
+      },
+      "sourceEventSeqs": [
+        51
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 56,
+      "time": 1792478846006,
+      "data": {
+        "turn": 1,
+        "step": 9,
+        "callId": "evidence-9",
+        "name": "quality_receipt",
+        "arguments": "{}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 57,
+      "time": 1792478846018,
+      "data": {
+        "turn": 1,
+        "step": 9,
+        "message": {
+          "role": "tool",
+          "source": {
+            "kind": "tool",
+            "callId": "evidence-9"
+          },
+          "toolCallId": "evidence-9",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"schemaVersion\": 1,\n  \"verifiedAt\": \"2026-10-20T06:47:24.835Z\",\n  \"evidenceCoverage\": {\n    \"digest\": \"f3842219c3c52c58325a35891fd1ef2333d3333808246b0e34a6d407a538f8c1\",\n    \"status\": \"complete\",\n    \"scope\": \"bounded-workspace-source-tree\",\n    \"exclusions\": [\n      \".git\",\n      \"node_modules\",\n      \"dist\",\n      \"build\",\n      \"coverage\",\n      \".cache\",\n      \".next\",\n      \".turbo\"\n    ],\n    \"reasons\": [],\n    \"changes\": [\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07\",\n        \"after\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      },\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:5041f063557e981e88d9ba6f6e80a5755c5e2207be00cbe4557324e28231a3ed\",\n        \"after\": \"33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      },\n      {\n        \"file\": \"src/a.js\",\n        \"before\": \"33206:683a9a134f467fb9b4ff97e391dda6f9765b7cd02584cfc080f9cc1aa047a62b\",\n        \"after\": \"33206:5a491c1f4cf5f370f449dec942bd292f70ad3c5267b7b8c030d17f633e82ee07\",\n        \"operation\": \"modified\",\n        \"tool\": \"edit\",\n        \"outcome\": \"success\",\n        \"attribution\": \"tool-target\"\n      }\n    ],\n    \"checkpoints\": 14,\n    \"bytesHashed\": 8586,\n    \"elapsedMs\": 61\n  },\n  \"mode\": \"balanced\",\n  \"root\": \"<local-path-redacted>\",\n  \"changedFiles\": [\n    \"src/a.js\"\n  ],\n  \"newlyIntroducedRegressions\": [],\n  \"unattributedFindings\": [],\n  \"autoFixed\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|semi|missing semicolon.\"\n    }\n  ],\n  \"agentFixed\": [\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/a.js|TS2322|Type 'string' is not assignable to type 'number'.|source:df08e72f6dc1b68f\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|a|AssertionError: expected 'new' to be 1 // Object.is equality\"\n    }\n  ],\n  \"ignoredHistoricalDebt\": [\n    {\n      \"check\": \"lint\",\n      \"identity\": \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n    },\n    {\n      \"check\": \"typecheck:.\",\n      \"identity\": \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n    },\n    {\n      \"check\": \"tests:.\",\n      \"identity\": \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n    }\n  ],\n  \"lint\": \"clean\",\n  \"typecheck\": \"clean\",\n  \"tests\": \"clean\",\n  \"selection\": {\n    \"strategy\": \"dependency\",\n    \"files\": [\n      \"tests/a.test.js\"\n    ],\n    \"reasons\": [\n      \"transitive reverse imports, including changed tests\"\n    ],\n    \"complete\": true\n  },\n  \"checksExecuted\": [\n    {\n      \"id\": \"lint:src/a.js\",\n      \"kind\": \"lint\",\n      \"scope\": \"src/a.js\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"--no-warn-ignored\",\n        \"-f\",\n        \"json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/a.js|eslint|error|no-unused-vars|'old' is assigned a value but never used.\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 246,\n      \"invocations\": [\n        {\n          \"command\": \"<local-path-redacted>\",\n          \"args\": [\n            \"--no-warn-ignored\",\n            \"-f\",\n            \"json\",\n            \"<local-path-redacted>\"\n          ],\n          \"cwd\": \"<local-path-redacted>\"\n        }\n      ]\n    },\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 342,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\"\n      ],\n      \"elapsedMs\": 547,\n      \"skipped\": []\n    }\n  ],\n  \"baselineChecks\": [\n    {\n      \"id\": \"typecheck:.\",\n      \"kind\": \"typecheck\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"--noEmit\",\n        \"--pretty\",\n        \"false\",\n        \"--incremental\",\n        \"false\",\n        \"-p\",\n        \"<local-path-redacted>\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"src/legacy.js|TS2322|Type 'string' is not assignable to type 'number'.|source:02bc97b48b31c171\"\n      ],\n      \"executed\": [],\n      \"elapsedMs\": 368,\n      \"skipped\": []\n    },\n    {\n      \"id\": \"tests:.\",\n      \"kind\": \"tests\",\n      \"scope\": \".\",\n      \"command\": \"<local-path-redacted>\",\n      \"args\": [\n        \"<local-path-redacted>\",\n        \"run\",\n        \"--reporter=json\"\n      ],\n      \"status\": \"complete\",\n      \"issues\": [\n        \"tests/a.test.js|historical|AssertionError: expected 1 to be +0 // Object.is equality\"\n      ],\n      \"executed\": [\n        \"tests/a.test.js|a\",\n        \"tests/a.test.js|historical\",\n        \"tests/b.test.js|unrelated\"\n      ],\n      \"elapsedMs\": 699,\n      \"skipped\": []\n    }\n  ],\n  \"repairRounds\": 1,\n  \"continuationRounds\": 0,\n  \"elapsedMs\": 1152,\n  \"finalVerdict\": \"clean\",\n  \"reasons\": []\n}"
+            }
+          ],
+          "isError": false,
+          "id": "57ab9030-4fce-43b2-afc7-ab5268c21f06"
+        }
+      },
+      "sourceEventSeqs": [
+        56
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "turn/end",
+      "seq": 62,
+      "time": 1792478847187,
+      "data": {
+        "turn": 1,
+        "reason": {
+          "kind": "completed"
+        }
+      }
+    }
+  ]
+}
