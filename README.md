@@ -31,6 +31,8 @@ dsh plugin --profile web add dsh-lint-loop@0.7.0
 
 [Architecture, limits and experiments](docs/evidence-integrity.md) ·
 [Release verification](docs/release-evidence/v0.7.0/verification.md) ·
+[v0.7.0 Release](https://github.com/lemonxiny55/dsh-lint-loop/releases/tag/v0.7.0) ·
+[npm v0.7.0](https://www.npmjs.com/package/dsh-lint-loop/v/0.7.0) ·
 [Reproduce the actual DSH lifecycle demo](docs/evidence-demo.md).
 
 **Previous release v0.6.0 installation and historical demo:**
@@ -90,7 +92,7 @@ There are at most two forced continuations and two autofix rounds per turn by de
 Install the npm package into your DSH profile:
 
 ```sh
-dsh plugin --profile web add dsh-lint-loop@0.6.0
+dsh plugin --profile web add dsh-lint-loop@0.7.0
 ```
 
 For local development:
